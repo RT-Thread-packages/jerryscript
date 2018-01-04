@@ -52,6 +52,6 @@ path += [jerry_core_dir + '/vm']
 LOCAL_CCFLAGS = " -std=c99"
 LOCAL_CPPDEFINES = ['JERRY_JS_PARSER']
 
-group = DefineGroup('JerryScript', src, depend = ['RT_USING_JERRYSCRIPT'], CPPPATH = path, LOCAL_CPPDEFINES = LOCAL_CPPDEFINES, LOCAL_CCFLAGS = LOCAL_CCFLAGS)
+group = DefineGroup('JerryScript', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = path, LOCAL_CPPDEFINES = LOCAL_CPPDEFINES, LOCAL_CCFLAGS = LOCAL_CCFLAGS)
 
 Return('group')
