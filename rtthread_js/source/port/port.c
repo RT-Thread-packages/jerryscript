@@ -1,6 +1,23 @@
-#include "jerry-port.h"
-
+/* Copyright JS Foundation and other contributors, http://js.foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include <string.h>
 #include <rtthread.h>
+
+#include "jerryscript.h"
+#include "jerryscript-port.h"
+#include "jerryscript-core.h"
 
 /**
  * Signal the port that jerry experienced a fatal failure from which it cannot
@@ -13,17 +30,18 @@
  *
  * Example: a libc-based port may implement this with exit() or abort(), or both.
  */
-void jerry_port_fatal (jerry_fatal_code_t code)
+void jerry_port_fatal(jerry_fatal_code_t code)
 {
-    rt_kprintf("jerryScritp fatal...\n");
-    rt_hw_interrupt_disable();
-	while (1);
+	rt_kprintf("jerryScritp fatal...\n");
+	rt_hw_interrupt_disable();
+	while (1)
+		;
 }
 
 /*
  *  I/O Port API
  */
-#define RT_JS_CONSOLEBUF_SIZE	128
+#define RT_JS_CONSOLEBUF_SIZE 128
 static char rt_log_buf[RT_JS_CONSOLEBUF_SIZE];
 
 /**
@@ -38,7 +56,7 @@ static char rt_log_buf[RT_JS_CONSOLEBUF_SIZE];
  *
  * Example: a libc-based port may implement this with vprintf().
  */
-void jerry_port_console (const char *format, ...)
+void jerry_port_console(const char *format, ...)
 {
 	va_list args;
 	rt_size_t length;
@@ -76,7 +94,7 @@ void jerry_port_console (const char *format, ...)
  * Example: a libc-based port may implement this with vfprintf(stderr) or
  * vfprintf(logfile), or both, depending on log level.
  */
-void jerry_port_log (jerry_log_level_t level, const char *format, ...)
+void jerry_port_log(jerry_log_level_t level, const char *format, ...)
 {
 	va_list args;
 	rt_size_t length;
@@ -108,7 +126,7 @@ void jerry_port_log (jerry_log_level_t level, const char *format, ...)
  * @return true  - if success
  *         false - otherwise
  */
-bool jerry_port_get_time_zone (jerry_time_zone_t *tz_p)
+bool jerry_port_get_time_zone(jerry_time_zone_t *tz_p)
 {
 	tz_p->offset = 0;
 	tz_p->daylight_saving_time = 0;
@@ -120,7 +138,7 @@ bool jerry_port_get_time_zone (jerry_time_zone_t *tz_p)
  *
  * @return milliseconds since Unix epoch
  */
-double jerry_port_get_current_time (void)
+double jerry_port_get_current_time(void)
 {
-    return rt_tick_get() * RT_TICK_PER_SECOND / 1000;
+	return rt_tick_get() * RT_TICK_PER_SECOND / 1000;
 }

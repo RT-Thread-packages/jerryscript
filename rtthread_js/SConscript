@@ -1,0 +1,16 @@
+from building import *
+
+cwd = GetCurrentDir()
+src = Glob('*.c') + Glob('*.cpp') + Glob('./source/*.c') + Glob('./source/*.cpp') + Glob('./source/port/*.c') + Glob('./source/port/*.cpp')
+
+src += Glob('./rt-registry/source/wrap_tools.cpp')
+
+CPPPATH = [cwd, str(Dir('#'))]
+CPPPATH += [cwd + '/source']
+CPPPATH += [cwd + '/source/port']
+CPPPATH += [cwd + '/rt-util']
+CPPPATH += [cwd + '/rt-registry']
+
+group = DefineGroup('rtthread_js', src, depend = [], CPPPATH = CPPPATH)
+
+Return('group')
