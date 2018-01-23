@@ -1,7 +1,2 @@
 # jerryscript
-JerryScript port for RT-Thread
-
-How to use?
-
-Please move this jerryscript dir under RT-Thread/components and 
-defines RT_USING_JERRYSCRIPT in rtconfig.h file.
+JerryScript is a lightweight JavaScript engine for resource-constrained devices such as microcontrollers. It can run on devices with less than 64 KB of RAM and less than 200 KB of flash memory.
