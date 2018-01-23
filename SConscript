@@ -1,5 +1,3 @@
-Import('RTT_ROOT')
-Import('rtconfig')
 from building import *
 
 # get current directory
@@ -48,10 +46,7 @@ SOURCE_EXT_MODULE           = Glob(jerry_ext_dir + '/module/*.c')
 
 jerry_ext = SOURCE_EXT_ARG + SOURCE_EXT_HANDLER + SOURCE_EXT_INCLUDE + SOURCE_EXT_MODULE
 
-src = []
-src += jerry_core
-
-src += jerry_ext
+src = jerry_core + jerry_ext
 
 path = [cwd]
 path += [jerry_core_dir]
@@ -75,7 +70,7 @@ path += [jerry_ext_dir + '/handler']
 path += [jerry_ext_dir + '/include']
 path += [jerry_ext_dir + '/module']
 
-LOCAL_CCFLAGS = " -std=c99"
+LOCAL_CCFLAGS    = " -std=c99"
 LOCAL_CPPDEFINES = ['JERRY_JS_PARSER']
 
 group = DefineGroup('JerryScript', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = path, LOCAL_CPPDEFINES = LOCAL_CPPDEFINES, LOCAL_CCFLAGS = LOCAL_CCFLAGS)
