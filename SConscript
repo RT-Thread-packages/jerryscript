@@ -49,6 +49,7 @@ jerry_ext = SOURCE_EXT_ARG + SOURCE_EXT_HANDLER + SOURCE_EXT_INCLUDE + SOURCE_EX
 src = jerry_core + jerry_ext
 
 path = [cwd]
+path += [cwd + '/rtthread-port']
 path += [jerry_core_dir]
 path += [jerry_core_dir + '/ecma/base']
 path += [jerry_core_dir + '/ecma/builtin-objects']
