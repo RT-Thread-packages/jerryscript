@@ -25,14 +25,52 @@ jerry_value_t js_get_property(const jerry_value_t obj, const char *name)
     return ret;
 }
 
-void js_add_function(const jerry_value_t obj, const char *name, 
+void js_add_function(const jerry_value_t obj, const char *name,
     jerry_external_handler_t func)
 {
     jerry_value_t str = jerry_create_string((const jerry_char_t *)name);
     jerry_value_t jfunc = jerry_create_external_function(func);
 
     jerry_set_property(obj, str, jfunc);
+
     jerry_release_value(str);
+    jerry_release_value(jfunc);
+}
+
+char *js_value_to_string(const jerry_value_t value)
+{
+    int len;
+    char *str;
+
+    len = jerry_get_string_length(value);
+
+    str = (char*)malloc(len + 1);
+    if (str)
+    {
+        jerry_string_to_char_buffer(value, (jerry_char_t*)str, len);
+        str[len] = '\0';
+    }
+
+    return str;
+}
+
+jerry_value_t js_call_function(const jerry_value_t obj, const char *name,
+    const jerry_value_t args[], jerry_size_t args_cnt)
+{
+    jerry_value_t ret;
+    jerry_value_t function = js_get_property(obj, name);
+
+    if (jerry_value_is_function(function))
+    {
+        ret = jerry_call_function(function, obj, args, args_cnt);
+    }
+    else
+    {
+        ret = jerry_create_null();
+    }
+
+    jerry_release_value(function);
+    return ret;
 }
 
 bool object_dump_foreach(const jerry_value_t property_name,

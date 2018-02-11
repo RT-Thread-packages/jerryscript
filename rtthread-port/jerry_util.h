@@ -25,8 +25,12 @@ void js_set_property(const jerry_value_t obj, const char *name,
 
 jerry_value_t js_get_property(const jerry_value_t obj, const char *name);
 
-void js_add_function(const jerry_value_t obj, const char *name, 
+void js_add_function(const jerry_value_t obj, const char *name,
     jerry_external_handler_t func);
+jerry_value_t js_call_function(const jerry_value_t obj, const char *name,
+    const jerry_value_t args[], jerry_size_t args_cnt);
+
+char *js_value_to_string(const jerry_value_t value);
 
 void js_value_dump(const jerry_value_t value);
 

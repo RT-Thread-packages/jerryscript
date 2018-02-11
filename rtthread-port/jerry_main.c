@@ -255,4 +255,3 @@ int jerry_main(int argc, char *argv[])
     return JERRY_STANDALONE_EXIT_CODE_OK;
 } /* main */
 MSH_CMD_EXPORT(jerry_main, jerryScript Demo);
-
