@@ -12,8 +12,12 @@
 
 #define REGISTER_HANDLER(NAME) \
     jerryx_handler_register_global ( (jerry_char_t *)# NAME, NAME ## _handler)
+#define REGISTER_HANDLER_ALIAS(NAME, HANDLER) \
+    jerryx_handler_register_global ( (jerry_char_t *)# NAME, HANDLER)
 #define REGISTER_METHOD(OBJ, NAME) \
     js_add_function (OBJ, # NAME, NAME ## _handler)
+#define REGISTER_METHOD_ALIAS(OBJ, NAME, HANDLER) \
+    js_add_function (OBJ, # NAME, HANDLER)
 
 #ifdef __cplusplus
 extern "C"
@@ -33,6 +37,9 @@ jerry_value_t js_call_function(const jerry_value_t obj, const char *name,
 char *js_value_to_string(const jerry_value_t value);
 
 void js_value_dump(const jerry_value_t value);
+int js_read_file(const char* filename, char **script);
+
+int js_util_init(void);
 
 #ifdef __cplusplus
 }

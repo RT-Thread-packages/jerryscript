@@ -82,8 +82,8 @@ bool object_dump_foreach(const jerry_value_t property_name,
 
     first_property = (int *)user_data_p;
 
-    // if (*first_property) first_property = 0;
-    // else
+    if (*first_property) *first_property = 0;
+    else
     {
         printf(",");
     }
@@ -142,7 +142,7 @@ void js_value_dump(jerry_value_t value)
     }
     else if (jerry_value_is_function(value))
     {
-        printf("function");
+        printf("[function]");
     }
     else if (jerry_value_is_constructor(value))
     {
@@ -171,4 +171,52 @@ void js_value_dump(jerry_value_t value)
     {
         printf("what?");
     }
+}
+
+int js_read_file(const char* filename, char **script)
+{
+    FILE *fp;
+    int length = 0;
+
+    if (!filename || !script) return 0;
+
+    fp = fopen(filename, "rb");
+    if (fp)
+    {
+        fseek(fp, 0, SEEK_END);
+        length = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+
+        if (length)
+        {
+            char *script_str = (char*) malloc (length + 1);
+            if (script_str)
+            {
+                script_str[length] = '\0';
+                if (fread(script_str, length, 1, fp) == 1)
+                {
+                    *script = script_str;
+                }
+                else
+                {
+                    printf("read failed!\n");
+                }
+            }
+            else length = 0;
+        }
+        fclose(fp);
+    }
+
+    return length;
+}
+
+extern int js_console_init();
+extern int js_module_init();
+
+int js_util_init(void)
+{
+    js_console_init();
+    // js_module_init();
+
+    return 0;
 }

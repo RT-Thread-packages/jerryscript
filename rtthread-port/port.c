@@ -82,6 +82,15 @@ void jerry_port_log (jerry_log_level_t level, const char *format, ...)
     va_end(args);
 }
 
+/**
+ * Default implementation of jerryx_port_handler_print_char. Uses 'printf' to
+ * print a single character to standard output.
+ */
+void jerryx_port_handler_print_char (char c) /**< the character to print */
+{
+    rt_kprintf("%c", c);
+} /* jerryx_port_handler_print_char */
+
 /*
  * Date Port API
  */
