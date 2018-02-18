@@ -1,5 +1,4 @@
 #include <rtthread.h>
-#include <finsh.h>
 
 #include "jerry_util.h"
 
@@ -9,6 +8,7 @@ DECLARE_HANDLER(ps)
 #ifdef HOST_BUILD
     printf("list thread\n");
 #else
+    extern long list_thread(void);
     list_thread();
 #endif
 
@@ -17,10 +17,9 @@ DECLARE_HANDLER(ps)
 
 jerry_value_t js_module_rtthread_init(void)
 {
-    printf("to create rtthread module\n");
     jerry_value_t rtthread_obj = jerry_create_object();
     REGISTER_METHOD(rtthread_obj, ps);
-    
+
     return rtthread_obj;
 }
-FINSH_FUNCTION_EXPORT_ALIAS(js_module_rtthread_init, __jsm_os, NULL);
+JS_MODULE(os, js_module_rtthread_init);

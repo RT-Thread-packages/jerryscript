@@ -7,27 +7,82 @@
 
 #include "jerry_util.h"
 #include "jerry_module.h"
+#include <dfs.h>
 
 #include <jerryscript-ext/module.h>
 #include <ecma-globals.h>
 
 typedef jerry_value_t (*module_init_func_t)(void);
 
+#ifdef RT_USING_DFS
+char *js_module_dirname(char *path)
+{
+    size_t i;
+	char *s = NULL;
+
+    if (!path || !*path) return NULL;
+
+	s = rt_strdup(path);
+	if (!s) return NULL;
+
+    i = strlen(s)-1;
+    for (; s[i]=='/'; i--) if (!i) { s[0] = '/'; goto __exit; }
+    for (; s[i]!='/'; i--) if (!i) { s[0] = '.'; goto __exit; }
+    for (; s[i]=='/'; i--) if (!i) { s[0] = '/'; goto __exit; }
+
+__exit:
+    s[i+1] = 0;
+    return s;
+}
+
 /* load module from file system */
 static bool load_module_from_filesystem(const jerry_value_t module_name, jerry_value_t *result)
 {
     bool ret = false;
+    char *str = NULL;	
     char *module = js_value_to_string(module_name);
 
-    jerry_size_t size = 256;
-    char full_path[size + 9];
+    char *dirname  = NULL;
+    char *filename = NULL;
 
-    sprintf(full_path, "%s", module);
-    full_path[size + 8] = '\0';
+    jerry_value_t dirname_value  = ECMA_VALUE_UNDEFINED;
+    jerry_value_t filename_value = ECMA_VALUE_UNDEFINED;
+    jerry_value_t global_obj     = ECMA_VALUE_UNDEFINED;
 
-    char *str = NULL;
+    char *full_path = NULL;
+	char *full_dir  = NULL;
+
+    global_obj  = jerry_get_global_object();
+    dirname_value = js_get_property(global_obj, "__dirname");
+    if (jerry_value_is_string(dirname_value))
+    {
+        dirname = js_value_to_string(dirname_value);
+    }
+    else
+    {
+        dirname = NULL;
+    }
+
+    if (module[0] != '/') /* is a relative path */
+    {
+        full_path = dfs_normalize_path(dirname, module);
+    }
+    else
+    {
+        full_path = dfs_normalize_path(NULL, module);
+    }
+	free(dirname);
+
     uint32_t len = js_read_file(full_path, &str);
     if (len == 0) goto __exit;
+
+    filename_value = js_get_property(global_obj, "__filename");
+
+    /* set new __filename and __dirname */
+	full_dir = js_module_dirname(full_path);
+
+    js_set_string_property(global_obj, "__dirname",  full_dir);
+    js_set_string_property(global_obj, "__filename", full_path);
 
     (*result) = jerry_eval((jerry_char_t *)str, len, false);
     if (jerry_value_has_error_flag(*result))
@@ -35,12 +90,24 @@ static bool load_module_from_filesystem(const jerry_value_t module_name, jerry_v
     else
         ret = true;
 
+    /* restore __filename and __dirname */
+    js_set_property(global_obj, "__dirname",  dirname_value);
+    js_set_property(global_obj, "__filename", filename_value);
+
 __exit:
+	if (full_dir) free(full_dir);
+	if (full_path) free(full_path);
+
+    jerry_release_value(global_obj);
+    jerry_release_value(dirname_value);
+    jerry_release_value(filename_value);
+
     free(module);
     free(str);
 
     return ret;
 }
+#endif
 
 /* load builtin module */
 static bool load_module_from_builtin(const jerry_value_t module_name,
@@ -62,13 +129,14 @@ static bool load_module_from_builtin(const jerry_value_t module_name,
             ret = true;
         }
     }
-#else
+#elif defined(RT_USING_FINSH)
     int len = strlen(module) + 7;
     char module_fullname[len];
 
     snprintf(module_fullname, len, "__jsm_%s", module);
     module_fullname[len - 1] = '\0';
 
+    /* find syscall in shell symbol section */
     struct finsh_syscall* syscall = finsh_syscall_lookup(module_fullname);
     if (syscall)
     {
@@ -84,11 +152,13 @@ __exit:
     return ret;
 }
 
+#ifdef RT_USING_DFS
 static jerryx_module_resolver_t load_filesystem_resolver =
 {
     NULL,
     load_module_from_filesystem
 };
+#endif
 
 static jerryx_module_resolver_t load_builtin_resolver =
 {
@@ -99,7 +169,9 @@ static jerryx_module_resolver_t load_builtin_resolver =
 static const jerryx_module_resolver_t *resolvers[] =
 {
     &load_builtin_resolver,
+#ifdef RT_USING_DFS
     &load_filesystem_resolver
+#endif
 };
 
 DECLARE_HANDLER(require)
@@ -128,9 +200,9 @@ DECLARE_HANDLER(require)
     js_set_property(modules_obj, "exports", module_exports_obj);
     jerry_release_value(module_exports_obj);
 
-    // Try each of the resolvers to see if we can find the requested module
+    /* Try each of the resolvers to see if we can find the requested module */
     char *module = js_value_to_string(args[0]);
-    jerry_value_t result = jerryx_module_resolve(args[0], resolvers, 2);
+    jerry_value_t result = jerryx_module_resolve(args[0], resolvers, sizeof(resolvers)/sizeof(resolvers[0]));
     if (jerry_value_has_error_flag(result))
     {
         printf("Couldn't load module %s\n", module);
@@ -142,7 +214,7 @@ DECLARE_HANDLER(require)
                                   (const jerry_char_t *) "Module not found");
     }
 
-    /* set back the module.exports */
+    /* restore the parent module.exports */
     js_set_property(modules_obj, "exports", exports_obj);
 
     jerry_release_value(global_obj);
@@ -150,6 +222,7 @@ DECLARE_HANDLER(require)
     jerry_release_value(exports_obj);
 
     free(module);
+
     return result;
 }
 

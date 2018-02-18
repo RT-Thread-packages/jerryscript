@@ -25,6 +25,16 @@ jerry_value_t js_get_property(const jerry_value_t obj, const char *name)
     return ret;
 }
 
+void js_set_string_property(const jerry_value_t obj, const char *name,
+    char* value)
+{
+    jerry_value_t str       = jerry_create_string((const jerry_char_t *)name);
+    jerry_value_t value_str = jerry_create_string((const jerry_char_t *)value);
+    jerry_set_property(obj, str, value_str);
+    jerry_release_value (str);
+	jerry_release_value (value_str);
+}
+
 void js_add_function(const jerry_value_t obj, const char *name,
     jerry_external_handler_t func)
 {
