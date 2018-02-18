@@ -216,7 +216,7 @@ extern int js_module_init();
 int js_util_init(void)
 {
     js_console_init();
-    // js_module_init();
+    js_module_init();
 
     return 0;
 }
