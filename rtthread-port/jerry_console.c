@@ -25,7 +25,7 @@ int js_console_init()
     REGISTER_METHOD_ALIAS(console, log, jerryx_handler_print);
     REGISTER_METHOD_ALIAS(console, dir, dir_handler);
 
-    js_set_property(global_obj, (jerry_char_t *)"console", console);
+    js_set_property(global_obj, "console", console);
 
     jerry_release_value(global_obj);
     jerry_release_value(console);

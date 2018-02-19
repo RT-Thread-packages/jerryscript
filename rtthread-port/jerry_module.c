@@ -12,7 +12,7 @@
 #include <ecma-globals.h>
 
 #ifndef PATH_MAX
-#define PATH_MAX	256
+#define PATH_MAX    256
 #endif
 
 char *strdup(const char *);
@@ -24,12 +24,12 @@ typedef jerry_value_t (*module_init_func_t)(void);
 char *js_module_dirname(char *path)
 {
     size_t i;
-	char *s = NULL;
+    char *s = NULL;
 
     if (!path || !*path) return NULL;
 
-	s = strdup(path);
-	if (!s) return NULL;
+    s = strdup(path);
+    if (!s) return NULL;
 
     i = strlen(s)-1;
     for (; s[i]=='/'; i--) if (!i) { s[0] = '/'; goto __exit; }
@@ -45,20 +45,20 @@ char *js_module_normalize_path(const char *directory, const char *filename)
 {
     char *fullpath;
     char *dst0, *dst, *src;
-	char *cwd = NULL;
+    char *cwd = NULL;
 
-	/* check parameters */
-	if (filename == NULL) return NULL;
+    /* check parameters */
+    if (filename == NULL) return NULL;
 
-	if (directory == NULL && filename[0] != '/')
-	{
-		cwd = (char*) malloc (PATH_MAX);
-		if (cwd == NULL) return NULL;
+    if (directory == NULL && filename[0] != '/')
+    {
+        cwd = (char*) malloc (PATH_MAX);
+        if (cwd == NULL) return NULL;
 
-		/* get current working directory */
-		getcwd(cwd, PATH_MAX);
-		directory = cwd;
-	}
+        /* get current working directory */
+        getcwd(cwd, PATH_MAX);
+        directory = cwd;
+    }
 
     if (filename[0] != '/') /* it's a absolute path, use it directly */
     {
@@ -66,7 +66,7 @@ char *js_module_normalize_path(const char *directory, const char *filename)
 
         if (fullpath == NULL)
         {
-        	free(cwd);
+            free(cwd);
             return NULL;
         }
 
@@ -143,7 +143,7 @@ up_one:
         dst --;
         if (dst < dst0)
         {
-        	free(cwd);
+            free(cwd);
             free(fullpath);
             return NULL;
         }
@@ -165,7 +165,7 @@ up_one:
         fullpath[1] = '\0';
     }
 
-	free(cwd);
+    free(cwd);
 
     return fullpath;
 }
@@ -174,18 +174,17 @@ up_one:
 static bool load_module_from_filesystem(const jerry_value_t module_name, jerry_value_t *result)
 {
     bool ret = false;
-    char *str = NULL;	
+    char *str = NULL;
     char *module = js_value_to_string(module_name);
 
     char *dirname  = NULL;
-    char *filename = NULL;
 
     jerry_value_t dirname_value  = ECMA_VALUE_UNDEFINED;
     jerry_value_t filename_value = ECMA_VALUE_UNDEFINED;
     jerry_value_t global_obj     = ECMA_VALUE_UNDEFINED;
 
     char *full_path = NULL;
-	char *full_dir  = NULL;
+    char *full_dir  = NULL;
 
     global_obj  = jerry_get_global_object();
     dirname_value = js_get_property(global_obj, "__dirname");
@@ -206,7 +205,7 @@ static bool load_module_from_filesystem(const jerry_value_t module_name, jerry_v
     {
         full_path = js_module_normalize_path(NULL, module);
     }
-	free(dirname);
+    free(dirname);
 
     uint32_t len = js_read_file(full_path, &str);
     if (len == 0) goto __exit;
@@ -214,7 +213,7 @@ static bool load_module_from_filesystem(const jerry_value_t module_name, jerry_v
     filename_value = js_get_property(global_obj, "__filename");
 
     /* set new __filename and __dirname */
-	full_dir = js_module_dirname(full_path);
+    full_dir = js_module_dirname(full_path);
 
     js_set_string_property(global_obj, "__dirname",  full_dir);
     js_set_string_property(global_obj, "__filename", full_path);
@@ -230,8 +229,8 @@ static bool load_module_from_filesystem(const jerry_value_t module_name, jerry_v
     js_set_property(global_obj, "__filename", filename_value);
 
 __exit:
-	if (full_dir) free(full_dir);
-	if (full_path) free(full_path);
+    if (full_dir) free(full_dir);
+    if (full_path) free(full_path);
 
     jerry_release_value(global_obj);
     jerry_release_value(dirname_value);
@@ -249,14 +248,13 @@ static bool load_module_from_builtin(const jerry_value_t module_name,
                                      jerry_value_t *result)
 {
     bool ret = false;
-    jerry_value_t value = ECMA_VALUE_UNDEFINED;
     module_init_func_t module_init;
 
     char *module = js_value_to_string(module_name);
 #ifdef HOST_BUILD
     {
         extern jerry_value_t js_module_rtthread_init(void);
-        
+
         if (strcmp(module, "os") == 0)
         {
             module_init = js_module_rtthread_init;
@@ -272,8 +270,14 @@ static bool load_module_from_builtin(const jerry_value_t module_name,
     module_fullname[len - 1] = '\0';
 
     /* find syscall in shell symbol section */
-    struct finsh_syscall* syscall = finsh_syscall_lookup(module_fullname);
-    if (syscall)
+    struct finsh_syscall* syscall;
+
+    for (syscall = _syscall_table_begin; syscall < _syscall_table_end; FINSH_NEXT_SYSCALL(syscall))
+    {
+        if (strcmp(syscall->name, module_fullname) == 0)
+            break;
+    }
+    if (syscall < _syscall_table_end)
     {
         module_init = (module_init_func_t)syscall->func;
         *result = module_init();
@@ -283,7 +287,6 @@ static bool load_module_from_builtin(const jerry_value_t module_name,
 
     free(module);
 
-__exit:
     return ret;
 }
 
