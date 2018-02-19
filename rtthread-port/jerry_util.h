@@ -23,6 +23,8 @@
 #include <finsh.h>
 #define JS_MODULE(NAME, MODULE_INIT)    \
     FINSH_FUNCTION_EXPORT_CMD(MODULE_INIT, __jsm_ ##NAME, RT_NULL)
+#else
+#define JS_MODULE(NAME, MODULE_INIT)
 #endif
 
 #ifdef __cplusplus
