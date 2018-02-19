@@ -3,7 +3,6 @@
 
 #include <rtthread.h>
 #include <finsh.h>
-#include <dfs.h>
 
 #include <jerryscript.h>
 #include <jerry_util.h>
@@ -30,7 +29,7 @@ int jerry_main(int argc, char** argv)
 		char *full_path = NULL;
 		char *full_dir	= NULL;
 
-		full_path = dfs_normalize_path(NULL, argv[1]);
+		full_path = js_module_normalize_path(NULL, argv[1]);
 		full_dir  = js_module_dirname(full_path);
 
 		js_set_string_property(global_obj, "__dirname",  full_dir);

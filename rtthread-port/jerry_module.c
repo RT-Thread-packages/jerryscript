@@ -7,10 +7,16 @@
 
 #include "jerry_util.h"
 #include "jerry_module.h"
-#include <dfs.h>
 
 #include <jerryscript-ext/module.h>
 #include <ecma-globals.h>
+
+#ifndef PATH_MAX
+#define PATH_MAX	256
+#endif
+
+char *strdup(const char *);
+char *getcwd(char *buf, size_t size);
 
 typedef jerry_value_t (*module_init_func_t)(void);
 
@@ -22,7 +28,7 @@ char *js_module_dirname(char *path)
 
     if (!path || !*path) return NULL;
 
-	s = rt_strdup(path);
+	s = strdup(path);
 	if (!s) return NULL;
 
     i = strlen(s)-1;
@@ -33,6 +39,135 @@ char *js_module_dirname(char *path)
 __exit:
     s[i+1] = 0;
     return s;
+}
+
+char *js_module_normalize_path(const char *directory, const char *filename)
+{
+    char *fullpath;
+    char *dst0, *dst, *src;
+	char *cwd = NULL;
+
+	/* check parameters */
+	if (filename == NULL) return NULL;
+
+	if (directory == NULL && filename[0] != '/')
+	{
+		cwd = (char*) malloc (PATH_MAX);
+		if (cwd == NULL) return NULL;
+
+		/* get current working directory */
+		getcwd(cwd, PATH_MAX);
+		directory = cwd;
+	}
+
+    if (filename[0] != '/') /* it's a absolute path, use it directly */
+    {
+        fullpath = malloc(strlen(directory) + strlen(filename) + 2);
+
+        if (fullpath == NULL)
+        {
+        	free(cwd);
+            return NULL;
+        }
+
+        /* join path and file name */
+        snprintf(fullpath, strlen(directory) + strlen(filename) + 2,
+            "%s/%s", directory, filename);
+    }
+    else
+    {
+        fullpath = strdup(filename); /* copy string */
+
+        if (fullpath == NULL)
+            return NULL;
+    }
+
+    src = fullpath;
+    dst = fullpath;
+
+    dst0 = dst;
+    while (1)
+    {
+        char c = *src;
+
+        if (c == '.')
+        {
+            if (!src[1]) src ++; /* '.' and ends */
+            else if (src[1] == '/')
+            {
+                /* './' case */
+                src += 2;
+
+                while ((*src == '/') && (*src != '\0'))
+                    src ++;
+                continue;
+            }
+            else if (src[1] == '.')
+            {
+                if (!src[2])
+                {
+                    /* '..' and ends case */
+                    src += 2;
+                    goto up_one;
+                }
+                else if (src[2] == '/')
+                {
+                    /* '../' case */
+                    src += 3;
+
+                    while ((*src == '/') && (*src != '\0'))
+                        src ++;
+                    goto up_one;
+                }
+            }
+        }
+
+        /* copy up the next '/' and erase all '/' */
+        while ((c = *src++) != '\0' && c != '/')
+            *dst ++ = c;
+
+        if (c == '/')
+        {
+            *dst ++ = '/';
+            while (c == '/')
+                c = *src++;
+
+            src --;
+        }
+        else if (!c)
+            break;
+
+        continue;
+
+up_one:
+        dst --;
+        if (dst < dst0)
+        {
+        	free(cwd);
+            free(fullpath);
+            return NULL;
+        }
+        while (dst0 < dst && dst[-1] != '/')
+            dst --;
+    }
+
+    *dst = '\0';
+
+    /* remove '/' in the end of path if exist */
+    dst --;
+    if ((dst != fullpath) && (*dst == '/'))
+        *dst = '\0';
+
+    /* final check fullpath is not empty, for the special path of lwext "/.." */
+    if ('\0' == fullpath[0])
+    {
+        fullpath[0] = '/';
+        fullpath[1] = '\0';
+    }
+
+	free(cwd);
+
+    return fullpath;
 }
 
 /* load module from file system */
@@ -65,11 +200,11 @@ static bool load_module_from_filesystem(const jerry_value_t module_name, jerry_v
 
     if (module[0] != '/') /* is a relative path */
     {
-        full_path = dfs_normalize_path(dirname, module);
+        full_path = js_module_normalize_path(dirname, module);
     }
     else
     {
-        full_path = dfs_normalize_path(NULL, module);
+        full_path = js_module_normalize_path(NULL, module);
     }
 	free(dirname);
 
