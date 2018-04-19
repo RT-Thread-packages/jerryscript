@@ -1,14 +1,22 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License")
+ * Copyright (c) 2016-2018, Intel Corporation.
+ *
+ * ported from zephyr.js
+ * COPYRIGHT (C) 2018, RT-Thread Development Team
+ */
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 #include <jerry_util.h>
 
-#include "js_buffer.h"
+#include "jerry_buffer.h"
 
 #define strequal(a, b) !strcmp(a, b)
 
-#define DECL_FUNC_ARGS(name, ...)                                        \
+#define DECL_FUNC_ARGS(name, ...)                                            \
     jerry_value_t name(const jerry_value_t function_obj,                     \
                        const jerry_value_t this, const jerry_value_t argv[], \
                        const jerry_length_t args_cnt, __VA_ARGS__)
