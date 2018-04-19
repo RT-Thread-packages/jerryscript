@@ -1,0 +1,721 @@
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include <jerry_util.h>
+
+#include "js_buffer.h"
+
+#define strequal(a, b) !strcmp(a, b)
+
+#define DECL_FUNC_ARGS(name, ...)                                        \
+    jerry_value_t name(const jerry_value_t function_obj,                     \
+                       const jerry_value_t this, const jerry_value_t argv[], \
+                       const jerry_length_t args_cnt, __VA_ARGS__)
+
+static jerry_value_t jerry_buffer_prototype;
+js_buffer_t *jerry_buffer_find(const jerry_value_t obj);
+
+static void jerry_buffer_callback_free(void *handle)
+{
+    js_buffer_t *item = (js_buffer_t *)handle;
+
+    free(item->buffer);
+    free(item);
+}
+
+static const jerry_object_native_info_t buffer_type_info =
+{
+    .free_cb = jerry_buffer_callback_free
+};
+
+bool jerry_value_is_buffer(const jerry_value_t value)
+{
+    if (jerry_value_is_object(value) && jerry_buffer_find(value))
+    {
+        return true;
+    }
+    return false;
+}
+
+js_buffer_t *jerry_buffer_find(const jerry_value_t obj)
+{
+    // requires: obj should be the JS object associated with a buffer, created
+    //             in jerry_buffer
+    //  effects: looks up obj in our list of known buffer objects and returns
+    //             the associated list item struct, or NULL if not found
+    js_buffer_t *handle;
+    const jerry_object_native_info_t *tmp;
+    if (jerry_get_object_native_pointer(obj, (void **)&handle, &tmp))
+    {
+        if (tmp == &buffer_type_info)
+        {
+            return handle;
+        }
+    }
+
+    return NULL;
+}
+
+static DECL_FUNC_ARGS(jerry_buffer_read_bytes, int bytes, bool big_endian)
+{
+    // requires: this is a JS buffer object created with jerry_buffer_create,
+    //             argv[0] should be an offset into the buffer, but will treat
+    //             offset as 0 if not given, as node.js seems to
+    //           bytes is the number of bytes to read (expects 1, 2, or 4)
+    //           big_endian true reads the bytes in big endian order, false in
+    //             little endian order
+    //  effects: reads bytes from the buffer associated with this JS object, if
+    //             found, at the given offset, if within the bounds of the
+    //             buffer; otherwise returns an error
+
+    // args: offset
+    // ZJS_VALIDATE_ARGS(Z_OPTIONAL Z_NUMBER);
+
+    uint32_t offset = 0;
+    if (args_cnt >= 1)
+        offset = (uint32_t)jerry_get_number_value(argv[0]);
+
+    js_buffer_t *buf = jerry_buffer_find(this);
+    if (!buf)
+        return jerry_create_undefined();
+
+    if (offset + bytes > buf->bufsize)
+        return jerry_create_undefined();
+
+    int dir = big_endian ? 1 : -1;
+    if (!big_endian)
+        offset += bytes - 1;  // start on the big end
+
+    uint32_t value = 0;
+    for (int i = 0; i < bytes; i++)
+    {
+        value <<= 8;
+        value |= buf->buffer[offset];
+        offset += dir;
+    }
+
+    return jerry_create_number(value);
+}
+
+static DECL_FUNC_ARGS(jerry_buffer_write_bytes, int bytes, bool big_endian)
+{
+    // requires: this is a JS buffer object created with jerry_buffer_create,
+    //             argv[0] must be the value to be written, argv[1] should be
+    //             an offset into the buffer, but will treat offset as 0 if not
+    //             given, as node.js seems to
+    //           bytes is the number of bytes to write (expects 1, 2, or 4)
+    //           big_endian true writes the bytes in big endian order, false in
+    //             little endian order
+    //  effects: writes bytes into the buffer associated with this JS object, if
+    //             found, at the given offset, if within the bounds of the
+    //             buffer and returns the offset just beyond what was written;
+    //             otherwise returns an error
+
+    // args: value[, offset]
+    // ZJS_VALIDATE_ARGS(Z_NUMBER, Z_OPTIONAL Z_NUMBER);
+
+    // technically negatives aren't supported but this makes them behave better
+    double dval = jerry_get_number_value(argv[0]);
+    uint32_t value = (uint32_t)(dval < 0 ? (int32_t)dval : dval);
+
+    uint32_t offset = 0;
+    if (args_cnt > 1)
+    {
+        offset = (uint32_t)jerry_get_number_value(argv[1]);
+    }
+
+    js_buffer_t *buf = jerry_buffer_find(this);
+    if (!buf)
+    {
+        return jerry_create_undefined();
+    }
+
+    uint32_t beyond = offset + bytes;
+    if (beyond > buf->bufsize)
+    {
+        printf("bufsize %d, write attempted from %d to %d\n",
+               buf->bufsize, offset, beyond);
+        return jerry_create_undefined();
+    }
+
+    int dir = big_endian ? -1 : 1;
+    if (big_endian)
+        offset += bytes - 1;  // start on the little end
+
+    for (int i = 0; i < bytes; i++)
+    {
+        buf->buffer[offset] = value & 0xff;
+        value >>= 8;
+        offset += dir;
+    }
+
+    return jerry_create_number(beyond);
+}
+
+DECLARE_HANDLER(readUInt8)
+{
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 1, true);
+}
+
+DECLARE_HANDLER(readUInt16BE)
+{
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 2, true);
+}
+
+DECLARE_HANDLER(readUInt16LE)
+{
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 2, false);
+}
+
+DECLARE_HANDLER(readUInt32BE)
+{
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 4, true);
+}
+
+DECLARE_HANDLER(readUInt32LE)
+{
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 4, false);
+}
+
+DECLARE_HANDLER(writeUInt8)
+{
+    return jerry_buffer_write_bytes(func_value, this_value, args, args_cnt, 1, true);
+}
+
+DECLARE_HANDLER(writeUInt16BE)
+{
+    return jerry_buffer_write_bytes(func_value, this_value, args, args_cnt, 2, true);
+}
+
+DECLARE_HANDLER(writeUInt16LE)
+{
+    return jerry_buffer_write_bytes(func_value, this_value, args, args_cnt, 2, false);
+}
+
+DECLARE_HANDLER(writeUInt32BE)
+{
+    return jerry_buffer_write_bytes(func_value, this_value, args, args_cnt, 4, true);
+}
+
+DECLARE_HANDLER(writeUInt32LE)
+{
+    return jerry_buffer_write_bytes(func_value, this_value, args, args_cnt, 4, false);
+}
+
+char jerry_int_to_hex(int value)
+{
+    // requires: value is between 0 and 15
+    //  effects: returns value as a lowercase hex digit 0-9a-f
+    if (value < 10)
+        return '0' + value;
+
+    return 'a' + value - 10;
+}
+
+DECLARE_HANDLER(toString)
+{
+    // requires: this must be a JS buffer object, if an argument is present it
+    //             must be the string 'utf8' (default), 'ascii' or 'hex', as
+    //             those are the only supported encodings for now
+    //  effects: if the buffer object is found, converts its contents to the
+    //             given encoding
+
+    // args: [encoding]
+    // ZJS_VALIDATE_ARGS_OPTCOUNT(optcount, Z_OPTIONAL Z_STRING);
+
+    // TODO: add start and end arguments found in Node
+    int optcount = 0;
+
+    if (args_cnt == 1 && jerry_value_is_string(args[0]))
+        optcount = 1;
+    else return jerry_create_undefined();
+
+    js_buffer_t *buf = jerry_buffer_find(this_value);
+    if (!buf)
+    {
+        return jerry_create_undefined();
+    }
+
+    int size;
+    char *enc;
+    const char *encoding = "utf8";
+    if (optcount)
+    {
+        enc = js_value_to_string(args[0]);
+        size = strlen(enc);
+        if (!size)
+        {
+            free(enc);
+            return jerry_create_undefined();
+        }
+
+        encoding = enc;
+    }
+
+    if (strequal(encoding, "utf8"))
+    {
+        free(enc);
+        return jerry_create_string_sz_from_utf8((jerry_char_t *)buf->buffer,
+                                                buf->bufsize);
+    }
+    else if (strequal(encoding, "ascii"))
+    {
+        char *str = malloc(buf->bufsize);
+        if (!str)
+        {
+            free(enc);
+            return jerry_create_undefined();
+        }
+
+        int len;
+        for (len = 0; len < buf->bufsize; ++len)
+        {
+            // strip off high bit if present
+            str[len] = buf->buffer[len] & 0x7f;
+            if (!str[len])
+            {
+                break;
+            }
+        }
+
+        jerry_value_t jstr;
+        jstr = jerry_create_string_sz_from_utf8((jerry_char_t *)str, len);
+        free(str);
+        free(enc);
+        return jstr;
+    }
+    else if (strequal(encoding, "hex"))
+    {
+        if (buf && buf->bufsize > 0)
+        {
+            char hexbuf[buf->bufsize * 2 + 1];
+            for (int i = 0; i < buf->bufsize; i++)
+            {
+                int high = (0xf0 & buf->buffer[i]) >> 4;
+                int low = 0xf & buf->buffer[i];
+                hexbuf[2 * i] = jerry_int_to_hex(high);
+                hexbuf[2 * i + 1] = jerry_int_to_hex(low);
+            }
+            hexbuf[buf->bufsize * 2] = '\0';
+
+            free(enc);
+            return jerry_create_string((jerry_char_t *)hexbuf);
+        }
+    }
+    else
+    {
+        free(enc);
+        return jerry_create_undefined();
+    }
+
+    free(enc);
+    return jerry_create_undefined();
+}
+
+DECLARE_HANDLER(copy)
+{
+    // requires: this must be a JS buffer object and args[0] a target buffer
+    //             object
+    //  effects: copies buffer contents w/ optional offsets considered to the
+    //             target buffer (following Node v8.9.4 API)
+
+    // args: target, [targetStart], [sourceStart], [sourceEnd]
+    // ZJS_VALIDATE_ARGS_OPTCOUNT(optcount, Z_BUFFER,
+    //                           Z_OPTIONAL Z_NUMBER Z_UNDEFINED,
+    //                           Z_OPTIONAL Z_NUMBER Z_UNDEFINED,
+    //                           Z_OPTIONAL Z_NUMBER Z_UNDEFINED);
+
+    int optcount = args_cnt;
+
+    js_buffer_t *source = jerry_buffer_find(this_value);
+    js_buffer_t *target = jerry_buffer_find(args[0]);
+    if (!source || !target)
+    {
+        return jerry_create_undefined();
+    }
+
+    int targetStart = 0;
+    int sourceStart = 0;
+    int sourceEnd = -1;
+    if (optcount >= 1 && !jerry_value_is_undefined(args[1]))
+    {
+        targetStart = (int)jerry_get_number_value(args[1]);
+    }
+    if (optcount >= 2 && !jerry_value_is_undefined(args[2]))
+    {
+        sourceStart = (int)jerry_get_number_value(args[2]);
+    }
+    if (optcount >= 3 && !jerry_value_is_undefined(args[3]))
+    {
+        sourceEnd = (int)jerry_get_number_value(args[3]);
+    }
+
+    if (sourceEnd == -1)
+    {
+        sourceEnd = source->bufsize;
+    }
+
+    if (targetStart < 0 || targetStart >= target->bufsize ||
+            sourceStart < 0 || sourceStart >= source->bufsize ||
+            sourceEnd < 0 || sourceEnd <= sourceStart ||
+            sourceEnd > source->bufsize)
+    {
+        return jerry_create_undefined();
+    }
+
+    if (sourceEnd - sourceStart > target->bufsize - targetStart)
+    {
+        return jerry_create_undefined();
+    }
+
+    int len = sourceEnd - sourceStart;
+    memcpy(target->buffer + targetStart, source->buffer + sourceStart, len);
+    return jerry_create_number(len);
+}
+
+DECLARE_HANDLER(write)
+{
+    // requires: string - what will be written to buf
+    //           offset - where to start writing (Default: 0)
+    //           length - how many bytes to write (Default: buf.length -offset)
+    //           encoding - the character encoding of string. Currently only
+    //             supports the default of utf8
+    //  effects: writes string to buf at offset according to the character
+    //             encoding in encoding.
+
+    // args: data[, offset[, length[, encoding]]]
+    // ZJS_VALIDATE_ARGS(Z_STRING, Z_OPTIONAL Z_NUMBER, Z_OPTIONAL Z_NUMBER,
+    //                  Z_OPTIONAL Z_STRING);
+
+    js_buffer_t *buf = jerry_buffer_find(this_value);
+    if (!buf)
+    {
+        return jerry_create_undefined();
+    }
+
+    // Check if the encoding string is anything other than utf8
+    if (args_cnt > 3)
+    {
+        char *encoding = js_value_to_string(args[3]);
+        if (!encoding)
+        {
+            return jerry_create_undefined();
+        }
+
+        // ask for one more char than needed to make sure not just prefix match
+        const char *utf8_encoding = "utf8";
+        int utf8_len = strlen(utf8_encoding);
+        int rval = strncmp(encoding, utf8_encoding, utf8_len + 1);
+        free(encoding);
+        if (rval != 0)
+        {
+            return jerry_create_undefined();
+        }
+    }
+
+    char *str = js_value_to_string(args[0]);
+    if (!str)
+    {
+        return jerry_create_undefined();
+    }
+    jerry_size_t size = strlen(str);
+
+    uint32_t offset = 0;
+    if (args_cnt > 1)
+        offset = (uint32_t)jerry_get_number_value(args[1]);
+
+    uint32_t length = buf->bufsize - offset;
+    if (args_cnt > 2)
+        length = (uint32_t)jerry_get_number_value(args[2]);
+
+    if (length > size)
+    {
+        free(str);
+        return jerry_create_undefined();
+    }
+
+    if (offset + length > buf->bufsize)
+    {
+        free(str);
+        return jerry_create_undefined();
+    }
+
+    memcpy(buf->buffer + offset, str, length);
+    free(str);
+
+    return jerry_create_number(length);
+}
+
+DECLARE_HANDLER(fill)
+{
+    // requires: value - what will be written to buf
+    //           offset - where to start writing (Default: 0)
+    //           end - offset at which to stop writing (Default: buf.length)
+    //           encoding - the character encoding of value. Currently only
+    //             supports the default of utf8
+    //  effects: writes string to buf at offset according to the character
+    //             encoding in encoding.
+
+    // args: data[, offset[, length[, encoding]]]
+    // ZJS_VALIDATE_ARGS(Z_STRING Z_NUMBER Z_BUFFER, Z_OPTIONAL Z_NUMBER,
+    //                  Z_OPTIONAL Z_NUMBER, Z_OPTIONAL Z_STRING);
+
+    // TODO: support encodings other than 'utf8'
+
+    uint32_t num;
+    char *source = NULL;
+    char *str = NULL;
+    uint32_t srclen = 0;
+
+    if (jerry_value_is_number(args[0]))
+    {
+        uint32_t srcnum = (uint32_t)jerry_get_number_value(args[0]);
+
+        // convert in case of endian difference
+        source = (char *)&num;
+        source[0] = (0xff000000 & srcnum) >> 24;
+        source[1] = (0x00ff0000 & srcnum) >> 16;
+        source[2] = (0x0000ff00 & srcnum) >> 8;
+        source[3] = 0x000000ff & srcnum;
+        srclen = sizeof(uint32_t);
+    }
+    else if (jerry_value_is_buffer(args[0]))
+    {
+        js_buffer_t *srcbuf = jerry_buffer_find(args[0]);
+        source = (char *)srcbuf->buffer;
+        srclen = srcbuf->bufsize;
+    }
+
+    js_buffer_t *buf = jerry_buffer_find(this_value);
+    if (!buf)
+    {
+        return jerry_create_undefined();
+    }
+
+    // Check if the encoding string is anything other than utf8
+    if (args_cnt > 3)
+    {
+        char *encoding = js_value_to_string(args[3]);
+        if (!encoding)
+        {
+            return jerry_create_undefined();
+        }
+
+        // ask for one more char than needed to make sure not just prefix match
+        const char *utf8_encoding = "utf8";
+        int utf8_len = strlen(utf8_encoding);
+        int rval = strncmp(encoding, utf8_encoding, utf8_len + 1);
+        free(encoding);
+        if (rval != 0)
+        {
+            return jerry_create_undefined();
+        }
+    }
+
+    uint32_t offset = 0;
+    if (args_cnt > 1)
+        offset = (uint32_t)jerry_get_number_value(args[1]);
+
+    uint32_t end = buf->bufsize;
+    if (args_cnt > 2)
+    {
+        end = (uint32_t)jerry_get_number_value(args[2]);
+        if (end > buf->bufsize)
+        {
+            end = buf->bufsize;
+        }
+    }
+
+    if (offset >= end)
+    {
+        // nothing to do
+        return jerry_acquire_value(this_value);
+    }
+
+    if (jerry_value_is_string(args[0]))
+    {
+        char *str = js_value_to_string(args[0]);
+        if (!str)
+        {
+            return jerry_create_undefined();
+        }
+        source = str;
+        srclen = strlen(str);
+    }
+
+    uint32_t bytes_left = end - offset;
+    while (bytes_left > 0)
+    {
+        uint32_t bytes = srclen;
+        if (bytes > bytes_left)
+        {
+            bytes = bytes_left;
+        }
+        memcpy(buf->buffer + offset, source, bytes);
+        offset += bytes;
+        bytes_left -= bytes;
+    }
+
+    free(str);
+    return jerry_acquire_value(this_value);
+}
+
+jerry_value_t jerry_buffer_create(uint32_t size, js_buffer_t **ret_buf)
+{
+    // follow Node's Buffer.kMaxLength limits though we don't expose that
+    uint32_t maxLength = (1UL << 31) - 1;
+    if (sizeof(size_t) == 4)
+    {
+        // detected 32-bit architecture
+        maxLength = (1 << 30) - 1;
+    }
+
+    if (size > maxLength)
+    {
+        printf("size: %d\n", size);
+        return jerry_create_undefined();
+    }
+
+    void *buf = malloc(size);
+    js_buffer_t *buf_item = (js_buffer_t *)malloc(sizeof(js_buffer_t));
+
+    if (!buf || !buf_item)
+    {
+        free(buf);
+        free(buf_item);
+        if (ret_buf)
+        {
+            *ret_buf = NULL;
+        }
+        return jerry_create_undefined();
+    }
+
+    jerry_value_t buf_obj = jerry_create_object();
+    buf_item->buffer = buf;
+    buf_item->bufsize = size;
+
+    jerry_set_prototype(buf_obj, jerry_buffer_prototype);
+    js_set_property(buf_obj, "length", jerry_create_number(size));
+
+    // watch for the object getting garbage collected, and clean up
+    jerry_set_object_native_pointer(buf_obj, buf_item, &buffer_type_info);
+    if (ret_buf)
+    {
+        *ret_buf = buf_item;
+    }
+
+    return buf_obj;
+}
+
+// Buffer constructor
+DECLARE_HANDLER(Buffer)
+{
+    // requires: single argument can be a numeric size in bytes, an array of
+    //             uint8s, or a string
+    //  effects: constructs a new JS Buffer object, and an associated buffer
+    //             tied to it through a js_buffer_t struct stored in a global
+    //             list
+
+    // args: initial size or initialization data
+    // ZJS_VALIDATE_ARGS(Z_NUMBER Z_ARRAY Z_STRING);
+
+    if (jerry_value_is_number(args[0]))
+    {
+        double dnum = jerry_get_number_value(args[0]);
+        uint32_t unum;
+
+        if (dnum < 0)
+        {
+            unum = 0;
+        }
+        else if (dnum > 0xffffffff)
+        {
+            unum = 0xffffffff;
+        }
+        else
+        {
+            // round to the nearest integer
+            unum = (uint32_t)(dnum + 0.5);
+        }
+
+        // treat a number argument as a length
+        return jerry_buffer_create(unum, NULL);
+    }
+    else if (jerry_value_is_array(args[0]))
+    {
+        // treat array argument as byte initializers
+        jerry_value_t array = args[0];
+        uint32_t len = jerry_get_array_length(array);
+
+        js_buffer_t *buf;
+        jerry_value_t new_buf = jerry_buffer_create(len, &buf);
+        if (buf)
+        {
+            for (int i = 0; i < len; i++)
+            {
+                jerry_value_t item = jerry_get_property_by_index(array, i);
+                if (jerry_value_is_number(item))
+                {
+                    buf->buffer[i] = (uint8_t)jerry_get_number_value(item);
+                }
+                else
+                {
+                    printf("non-numeric value in array, treating as 0\n");
+                    buf->buffer[i] = 0;
+                }
+            }
+        }
+        return new_buf;
+    }
+    else if (jerry_value_is_string(args[0]))
+    {
+        char *str = js_value_to_string(args[0]);
+        if (!str)
+        {
+            return jerry_create_undefined();
+        }
+
+        js_buffer_t *buf;
+        jerry_size_t size = strlen(str);
+        jerry_value_t new_buf = jerry_buffer_create(size, &buf);
+        if (buf)
+        {
+            memcpy(buf->buffer, str, size);
+        }
+
+        free(str);
+        return new_buf;
+    }
+
+    return jerry_create_undefined();
+}
+
+int js_buffer_cleanup(void)
+{
+    jerry_release_value(jerry_buffer_prototype);
+    return 0;
+}
+
+int js_buffer_init(void)
+{
+    REGISTER_HANDLER(Buffer);
+
+    jerry_buffer_prototype = jerry_create_object();
+    REGISTER_METHOD(jerry_buffer_prototype, readUInt8);
+    REGISTER_METHOD(jerry_buffer_prototype, writeUInt8);
+    REGISTER_METHOD(jerry_buffer_prototype, readUInt16BE);
+    REGISTER_METHOD(jerry_buffer_prototype, writeUInt16BE);
+    REGISTER_METHOD(jerry_buffer_prototype, readUInt16LE);
+    REGISTER_METHOD(jerry_buffer_prototype, writeUInt16LE);
+    REGISTER_METHOD(jerry_buffer_prototype, readUInt32BE);
+    REGISTER_METHOD(jerry_buffer_prototype, writeUInt32BE);
+    REGISTER_METHOD(jerry_buffer_prototype, readUInt32LE);
+    REGISTER_METHOD(jerry_buffer_prototype, writeUInt32LE);
+    REGISTER_METHOD(jerry_buffer_prototype, copy);
+    REGISTER_METHOD(jerry_buffer_prototype, fill);
+    REGISTER_METHOD(jerry_buffer_prototype, toString);
+    REGISTER_METHOD(jerry_buffer_prototype, write);
+
+    return 0;
+}
