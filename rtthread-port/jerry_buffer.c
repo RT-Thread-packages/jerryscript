@@ -211,39 +211,58 @@ DECLARE_HANDLER(writeUInt32LE)
     return jerry_buffer_write_bytes(func_value, this_value, args, args_cnt, 4, false);
 }
 
+DECLARE_HANDLER(readFloatBE)
+{
+	return jerry_create_undefined();
+}
+
+DECLARE_HANDLER(readDoubleBE)
+{
+	return jerry_create_undefined();
+}
+
 char jerry_int_to_hex(int value)
 {
-    // requires: value is between 0 and 15
-    //  effects: returns value as a lowercase hex digit 0-9a-f
     if (value < 10)
         return '0' + value;
 
     return 'a' + value - 10;
 }
 
+static int hex2int(const char *str)
+{
+    int i = 0;
+    int r = 0;
+
+    for (i = 0; i < 2; i++)
+    {
+        if (str[i] >= '0' && str[i] <= '9') r += str[i] - '0';
+        else if (str[i] >= 'a' && str[i] <= 'f') r += str[i] - 'a' + 10;
+        else if (str[i] >= 'A' && str[i] <= 'F') r += str[i] - 'A' + 10;
+
+        if (!i) r *= 16;
+    }
+
+    return r;
+}
+
+/*
+ * toString(encoding[opt], start[opt], end[opt])
+ */
 DECLARE_HANDLER(toString)
 {
-    // requires: this must be a JS buffer object, if an argument is present it
-    //             must be the string 'utf8' (default), 'ascii' or 'hex', as
-    //             those are the only supported encodings for now
-    //  effects: if the buffer object is found, converts its contents to the
-    //             given encoding
+	int start, end;
+    int optcount = args_cnt;
 
-    // args: [encoding]
-    // ZJS_VALIDATE_ARGS_OPTCOUNT(optcount, Z_OPTIONAL Z_STRING);
-
-    // TODO: add start and end arguments found in Node
-    int optcount = 0;
-
-    if (args_cnt == 1 && jerry_value_is_string(args[0]))
-        optcount = 1;
-    else return jerry_create_undefined();
+	if (args_cnt < 1 || !jerry_value_is_string(args[0])) return jerry_create_undefined();
 
     js_buffer_t *buf = jerry_buffer_find(this_value);
-    if (!buf)
-    {
-        return jerry_create_undefined();
-    }
+    if (!buf) return jerry_create_undefined();
+
+    if (args_cnt > 1) start = jerry_get_number_value(args[1]);
+	else start = 0;
+	if (args_cnt > 2) end = jerry_get_number_value(args[2]);
+	else end = buf->bufsize;
 
     int size;
     char *enc;
@@ -276,19 +295,17 @@ DECLARE_HANDLER(toString)
             return jerry_create_undefined();
         }
 
-        int len;
-        for (len = 0; len < buf->bufsize; ++len)
+        int index;
+        for (index = start; index < end; ++index)
         {
             // strip off high bit if present
-            str[len] = buf->buffer[len] & 0x7f;
-            if (!str[len])
-            {
+            str[index - start] = buf->buffer[index] & 0x7f;
+            if (!str[index - start])
                 break;
-            }
         }
 
         jerry_value_t jstr;
-        jstr = jerry_create_string_sz_from_utf8((jerry_char_t *)str, len);
+        jstr = jerry_create_string_sz_from_utf8((jerry_char_t *)str, end - start);
         free(str);
         free(enc);
         return jstr;
@@ -298,7 +315,7 @@ DECLARE_HANDLER(toString)
         if (buf && buf->bufsize > 0)
         {
             char hexbuf[buf->bufsize * 2 + 1];
-            for (int i = 0; i < buf->bufsize; i++)
+            for (int i = start; i < end; i++)
             {
                 int high = (0xf0 & buf->buffer[i]) >> 4;
                 int low = 0xf & buf->buffer[i];
@@ -319,6 +336,34 @@ DECLARE_HANDLER(toString)
 
     free(enc);
     return jerry_create_undefined();
+}
+
+DECLARE_HANDLER(concat)
+{
+	if (args_cnt == 1)
+	{
+		uint8_t *ptr;
+		
+		js_buffer_t *source = jerry_buffer_find(this_value);
+		js_buffer_t *target = jerry_buffer_find(args[0]);
+		if (!source || !target)
+		{
+			return this_value;
+		}
+
+		if (target->bufsize == 0 || source->bufsize < 0) return this_value;
+
+		ptr = realloc(source->buffer, source->bufsize + target->bufsize);
+		if (ptr) 
+		{
+			source->buffer = ptr;
+
+			memcpy(&source->buffer[source->bufsize], target->buffer, target->bufsize);
+			source->bufsize += target->bufsize;
+		}
+	}
+
+	return this_value;
 }
 
 DECLARE_HANDLER(copy)
@@ -616,17 +661,42 @@ jerry_value_t jerry_buffer_create(uint32_t size, js_buffer_t **ret_buf)
     return buf_obj;
 }
 
-// Buffer constructor
+#define ENCODING_UTF8   0
+#define ENCODING_ASCII  1
+#define ENCODING_HEX    2
+#define ENCODING_BASE64 3
+
+int buffer_encoding_type(const char* encoding)
+{
+    int ret = ENCODING_UTF8;
+    
+    if (strequal(encoding, "hex")) ret = ENCODING_HEX;
+    else if (strequal(encoding, "ascii")) ret = ENCODING_ASCII;
+    else if (strequal(encoding, "utf8")) ret = ENCODING_UTF8;
+    else if (strequal(encoding, "base64")) ret = ENCODING_BASE64;
+
+    return ret;
+}
+
+/*
+ * Buffer(number);
+ * Buffer(array);
+ * Buffer(string, encoding[opt]);
+ */
 DECLARE_HANDLER(Buffer)
 {
-    // requires: single argument can be a numeric size in bytes, an array of
-    //             uint8s, or a string
-    //  effects: constructs a new JS Buffer object, and an associated buffer
-    //             tied to it through a js_buffer_t struct stored in a global
-    //             list
+    int encoding_type = ENCODING_UTF8;
 
-    // args: initial size or initialization data
-    // ZJS_VALIDATE_ARGS(Z_NUMBER Z_ARRAY Z_STRING);
+    if (args_cnt > 1)
+    {
+        char *encoding = js_value_to_string(args[1]);
+        if (encoding)
+        {
+            encoding_type = buffer_encoding_type(encoding);
+
+            free(encoding);
+        }
+    }
 
     if (jerry_value_is_number(args[0]))
     {
@@ -678,6 +748,7 @@ DECLARE_HANDLER(Buffer)
     }
     else if (jerry_value_is_string(args[0]))
     {
+        uint8_t *data = NULL;
         char *str = js_value_to_string(args[0]);
         if (!str)
         {
@@ -686,13 +757,35 @@ DECLARE_HANDLER(Buffer)
 
         js_buffer_t *buf;
         jerry_size_t size = strlen(str);
+
+        if (encoding_type == ENCODING_HEX)
+        {
+            data = malloc(size/2);
+            if (data)
+            {
+                int index;
+                for (index = 0; index < size/2; index ++)
+                {
+                    data[index] = hex2int(&str[index * 2]);
+                }
+            }
+
+            size = size/2;
+        }
+        else
+        {
+            data = str;
+        }
+
         jerry_value_t new_buf = jerry_buffer_create(size, &buf);
         if (buf)
         {
-            memcpy(buf->buffer, str, size);
+            memcpy(buf->buffer, data, size);
         }
 
+        if ((char*)data != str) free(data);
         free(str);
+
         return new_buf;
     }
 
@@ -720,10 +813,13 @@ int js_buffer_init(void)
     REGISTER_METHOD(jerry_buffer_prototype, writeUInt32BE);
     REGISTER_METHOD(jerry_buffer_prototype, readUInt32LE);
     REGISTER_METHOD(jerry_buffer_prototype, writeUInt32LE);
+    REGISTER_METHOD(jerry_buffer_prototype, readFloatBE);
+    REGISTER_METHOD(jerry_buffer_prototype, readDoubleBE);
     REGISTER_METHOD(jerry_buffer_prototype, copy);
     REGISTER_METHOD(jerry_buffer_prototype, fill);
     REGISTER_METHOD(jerry_buffer_prototype, toString);
     REGISTER_METHOD(jerry_buffer_prototype, write);
+    REGISTER_METHOD(jerry_buffer_prototype, concat);
 
     return 0;
 }

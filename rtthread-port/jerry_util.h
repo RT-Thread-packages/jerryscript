@@ -50,6 +50,7 @@ void js_value_dump(const jerry_value_t value);
 int js_read_file(const char* filename, char **script);
 
 int js_util_init(void);
+int js_util_cleanup(void);
 
 #ifdef __cplusplus
 }

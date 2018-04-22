@@ -18,4 +18,7 @@ typedef struct js_buffer
 int js_buffer_init(void);
 int js_buffer_cleanup(void);
 
+js_buffer_t *jerry_buffer_find(const jerry_value_t obj);
+jerry_value_t jerry_buffer_create(uint32_t size, js_buffer_t **ret_buf);
+
 #endif

@@ -51,6 +51,7 @@ int jerry_main(int argc, char** argv)
 
         /* Parsed source code must be freed */
         jerry_release_value(parsed_code);
+        js_util_cleanup();
         jerry_cleanup();
 
 		free(full_path);

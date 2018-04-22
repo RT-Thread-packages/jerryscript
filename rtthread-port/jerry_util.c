@@ -222,11 +222,21 @@ int js_read_file(const char* filename, char **script)
 
 extern int js_console_init();
 extern int js_module_init();
+extern int js_buffer_init();
 
 int js_util_init(void)
 {
     js_console_init();
     js_module_init();
+    js_buffer_init();
 
+    return 0;
+}
+
+extern int js_buffer_cleanup();
+
+int js_util_cleanup(void)
+{
+    js_buffer_cleanup();
     return 0;
 }
