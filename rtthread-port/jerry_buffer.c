@@ -348,7 +348,7 @@ DECLARE_HANDLER(concat)
 		js_buffer_t *target = jerry_buffer_find(args[0]);
 		if (!source || !target)
 		{
-			return this_value;
+			return jerry_create_undefined();
 		}
 
 		if (target->bufsize == 0 || source->bufsize < 0) return this_value;
@@ -360,10 +360,11 @@ DECLARE_HANDLER(concat)
 
 			memcpy(&source->buffer[source->bufsize], target->buffer, target->bufsize);
 			source->bufsize += target->bufsize;
+			js_set_property(this_value, "length", jerry_create_number(source->bufsize));
 		}
 	}
 
-	return this_value;
+	return jerry_create_undefined();
 }
 
 DECLARE_HANDLER(copy)
