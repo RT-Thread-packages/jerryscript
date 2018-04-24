@@ -24,16 +24,16 @@ int jerry_main(int argc, char** argv)
     size_t length = js_read_file(argv[1], &script);
     if (length > 0)
     {
-    	/* add __filename, __dirname */
-		jerry_value_t global_obj  = jerry_get_global_object();
-		char *full_path = NULL;
-		char *full_dir	= NULL;
+        /* add __filename, __dirname */
+        jerry_value_t global_obj  = jerry_get_global_object();
+        char *full_path = NULL;
+        char *full_dir  = NULL;
 
-		full_path = js_module_normalize_path(NULL, argv[1]);
-		full_dir  = js_module_dirname(full_path);
+        full_path = js_module_normalize_path(NULL, argv[1]);
+        full_dir  = js_module_dirname(full_path);
 
-		js_set_string_property(global_obj, "__dirname",  full_dir);
-		js_set_string_property(global_obj, "__filename", full_path);
+        js_set_string_property(global_obj, "__dirname",  full_dir);
+        js_set_string_property(global_obj, "__filename", full_path);
         jerry_release_value(global_obj);
 
         jerry_value_t parsed_code = jerry_parse((jerry_char_t*)script, length, false);
@@ -45,6 +45,20 @@ int jerry_main(int argc, char** argv)
         {
             /* Execute the parsed source code in the Global scope */
             jerry_value_t ret = jerry_run(parsed_code);
+            if (jerry_value_has_error_flag (ret))
+            {
+                jerry_value_clear_error_flag (&ret);
+
+                jerry_value_t err_str_val = jerry_value_to_string (ret);
+                char *err_string = js_value_to_string(err_str_val);
+                if (err_string)
+                {
+                    printf("%s\n", err_string);
+                    free(err_string);
+                }
+                jerry_release_value (err_str_val);
+            }
+
             /* Returned value must be freed */
             jerry_release_value(ret);
         }
@@ -54,8 +68,8 @@ int jerry_main(int argc, char** argv)
         js_util_cleanup();
         jerry_cleanup();
 
-		free(full_path);
-		free(full_dir );
+        free(full_path);
+        free(full_dir );
         free(script);
     }
     else
