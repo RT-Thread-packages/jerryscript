@@ -126,7 +126,7 @@ void js_value_dump(jerry_value_t value)
     }
     else if (jerry_value_is_number(value))
     {
-        printf("%f\n", jerry_get_number_value(value));
+        printf("%f", jerry_get_number_value(value));
     }
     else if (jerry_value_is_null(value))
     {
