@@ -213,12 +213,12 @@ DECLARE_HANDLER(writeUInt32LE)
 
 DECLARE_HANDLER(readFloatBE)
 {
-	return jerry_create_undefined();
+    return jerry_create_undefined();
 }
 
 DECLARE_HANDLER(readDoubleBE)
 {
-	return jerry_create_undefined();
+    return jerry_create_undefined();
 }
 
 char jerry_int_to_hex(int value)
@@ -251,18 +251,18 @@ static int hex2int(const char *str)
  */
 DECLARE_HANDLER(toString)
 {
-	int start, end;
+    int start, end;
     int optcount = args_cnt;
 
-	if (args_cnt < 1 || !jerry_value_is_string(args[0])) return jerry_create_undefined();
+    if (args_cnt < 1 || !jerry_value_is_string(args[0])) return jerry_create_undefined();
 
     js_buffer_t *buf = jerry_buffer_find(this_value);
     if (!buf) return jerry_create_undefined();
 
     if (args_cnt > 1) start = jerry_get_number_value(args[1]);
-	else start = 0;
-	if (args_cnt > 2) end = jerry_get_number_value(args[2]);
-	else end = buf->bufsize;
+    else start = 0;
+    if (args_cnt > 2) end = jerry_get_number_value(args[2]);
+    else end = buf->bufsize;
 
     int size;
     char *enc;
@@ -312,20 +312,36 @@ DECLARE_HANDLER(toString)
     }
     else if (strequal(encoding, "hex"))
     {
-        if (buf && buf->bufsize > 0)
+        if (buf && end - start > 0)
         {
-            char hexbuf[buf->bufsize * 2 + 1];
-            for (int i = start; i < end; i++)
+            int size = (end - start);
+            char *hexbuf = malloc(size * 2 + 1);
+            if (hexbuf)
             {
-                int high = (0xf0 & buf->buffer[i]) >> 4;
-                int low = 0xf & buf->buffer[i];
-                hexbuf[2 * i] = jerry_int_to_hex(high);
-                hexbuf[2 * i + 1] = jerry_int_to_hex(low);
-            }
-            hexbuf[buf->bufsize * 2] = '\0';
+                jerry_value_t ret;
 
-            free(enc);
-            return jerry_create_string((jerry_char_t *)hexbuf);
+                for (int i = 0; i < size; i++)
+                {
+                    int high = (0xf0 & buf->buffer[i + start]) >> 4;
+                    int low = 0xf & buf->buffer[i + start];
+                    hexbuf[2 * i] = jerry_int_to_hex(high);
+                    hexbuf[2 * i + 1] = jerry_int_to_hex(low);
+                }
+                hexbuf[size * 2] = '\0';
+
+                free(enc);
+
+                ret = jerry_create_string((jerry_char_t *)hexbuf);
+
+                free(hexbuf);
+
+                return ret;
+            }
+            else
+            {
+                free(enc);
+                return jerry_create_undefined();
+            }
         }
     }
     else
@@ -340,31 +356,31 @@ DECLARE_HANDLER(toString)
 
 DECLARE_HANDLER(concat)
 {
-	if (args_cnt == 1)
-	{
-		uint8_t *ptr;
-		
-		js_buffer_t *source = jerry_buffer_find(this_value);
-		js_buffer_t *target = jerry_buffer_find(args[0]);
-		if (!source || !target)
-		{
-			return jerry_create_undefined();
-		}
+    if (args_cnt == 1)
+    {
+        uint8_t *ptr;
 
-		if (target->bufsize == 0 || source->bufsize < 0) return this_value;
+        js_buffer_t *source = jerry_buffer_find(this_value);
+        js_buffer_t *target = jerry_buffer_find(args[0]);
+        if (!source || !target)
+        {
+            return jerry_create_undefined();
+        }
 
-		ptr = realloc(source->buffer, source->bufsize + target->bufsize);
-		if (ptr) 
-		{
-			source->buffer = ptr;
+        if (target->bufsize == 0 || source->bufsize < 0) return this_value;
 
-			memcpy(&source->buffer[source->bufsize], target->buffer, target->bufsize);
-			source->bufsize += target->bufsize;
-			js_set_property(this_value, "length", jerry_create_number(source->bufsize));
-		}
-	}
+        ptr = realloc(source->buffer, source->bufsize + target->bufsize);
+        if (ptr)
+        {
+            source->buffer = ptr;
 
-	return jerry_create_undefined();
+            memcpy(&source->buffer[source->bufsize], target->buffer, target->bufsize);
+            source->bufsize += target->bufsize;
+            js_set_property(this_value, "length", jerry_create_number(source->bufsize));
+        }
+    }
+
+    return jerry_create_undefined();
 }
 
 DECLARE_HANDLER(copy)
@@ -382,6 +398,9 @@ DECLARE_HANDLER(copy)
 
     int optcount = args_cnt;
 
+    if (optcount <= 0)
+        return jerry_create_undefined();
+
     js_buffer_t *source = jerry_buffer_find(this_value);
     js_buffer_t *target = jerry_buffer_find(args[0]);
     if (!source || !target)
@@ -392,15 +411,15 @@ DECLARE_HANDLER(copy)
     int targetStart = 0;
     int sourceStart = 0;
     int sourceEnd = -1;
-    if (optcount >= 1 && !jerry_value_is_undefined(args[1]))
+    if (optcount > 1 && !jerry_value_is_undefined(args[1]))
     {
         targetStart = (int)jerry_get_number_value(args[1]);
     }
-    if (optcount >= 2 && !jerry_value_is_undefined(args[2]))
+    if (optcount > 2 && !jerry_value_is_undefined(args[2]))
     {
         sourceStart = (int)jerry_get_number_value(args[2]);
     }
-    if (optcount >= 3 && !jerry_value_is_undefined(args[3]))
+    if (optcount > 3 && !jerry_value_is_undefined(args[3]))
     {
         sourceEnd = (int)jerry_get_number_value(args[3]);
     }
@@ -670,7 +689,7 @@ jerry_value_t jerry_buffer_create(uint32_t size, js_buffer_t **ret_buf)
 int buffer_encoding_type(const char* encoding)
 {
     int ret = ENCODING_UTF8;
-    
+
     if (strequal(encoding, "hex")) ret = ENCODING_HEX;
     else if (strequal(encoding, "ascii")) ret = ENCODING_ASCII;
     else if (strequal(encoding, "utf8")) ret = ENCODING_UTF8;
