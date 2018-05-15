@@ -32,9 +32,21 @@ char *js_module_dirname(char *path)
     if (!s) return NULL;
 
     i = strlen(s)-1;
-    for (; s[i]=='/'; i--) if (!i) { s[0] = '/'; goto __exit; }
-    for (; s[i]!='/'; i--) if (!i) { s[0] = '.'; goto __exit; }
-    for (; s[i]=='/'; i--) if (!i) { s[0] = '/'; goto __exit; }
+    for (; s[i]=='/'; i--) if (!i)
+        {
+            s[0] = '/';
+            goto __exit;
+        }
+    for (; s[i]!='/'; i--) if (!i)
+        {
+            s[0] = '.';
+            goto __exit;
+        }
+    for (; s[i]=='/'; i--) if (!i)
+        {
+            s[0] = '/';
+            goto __exit;
+        }
 
 __exit:
     s[i+1] = 0;
@@ -72,7 +84,7 @@ char *js_module_normalize_path(const char *directory, const char *filename)
 
         /* join path and file name */
         snprintf(fullpath, strlen(directory) + strlen(filename) + 2,
-            "%s/%s", directory, filename);
+                 "%s/%s", directory, filename);
     }
     else
     {
@@ -219,7 +231,7 @@ static bool load_module_from_filesystem(const jerry_value_t module_name, jerry_v
     js_set_string_property(global_obj, "__filename", full_path);
 
     (*result) = jerry_eval((jerry_char_t *)str, len, false);
-    if (jerry_value_has_error_flag(*result))
+    if (jerry_value_is_error(*result))
         printf("failed to evaluate JS\n");
     else
         ret = true;
@@ -341,7 +353,7 @@ DECLARE_HANDLER(require)
     /* Try each of the resolvers to see if we can find the requested module */
     char *module = js_value_to_string(args[0]);
     jerry_value_t result = jerryx_module_resolve(args[0], resolvers, sizeof(resolvers)/sizeof(resolvers[0]));
-    if (jerry_value_has_error_flag(result))
+    if (jerry_value_is_error(result))
     {
         printf("Couldn't load module %s\n", module);
 
@@ -349,7 +361,7 @@ DECLARE_HANDLER(require)
 
         /* create result with error */
         result = jerry_create_error(JERRY_ERROR_TYPE,
-                                  (const jerry_char_t *) "Module not found");
+                                    (const jerry_char_t *) "Module not found");
     }
 
     /* restore the parent module.exports */

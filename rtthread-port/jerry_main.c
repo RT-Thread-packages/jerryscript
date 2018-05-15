@@ -36,8 +36,8 @@ int jerry_main(int argc, char** argv)
         js_set_string_property(global_obj, "__filename", full_path);
         jerry_release_value(global_obj);
 
-        jerry_value_t parsed_code = jerry_parse((jerry_char_t*)script, length, false);
-        if (jerry_value_has_error_flag(parsed_code))
+        jerry_value_t parsed_code = jerry_parse(NULL, 0, (jerry_char_t*)script, length, JERRY_PARSE_NO_OPTS);
+        if (jerry_value_is_error(parsed_code))
         {
             printf("JavaScript parse failed!\n");
         }
@@ -45,7 +45,7 @@ int jerry_main(int argc, char** argv)
         {
             /* Execute the parsed source code in the Global scope */
             jerry_value_t ret = jerry_run(parsed_code);
-            if (jerry_value_has_error_flag (ret))
+            if (jerry_value_is_error (ret))
             {
                 jerry_value_clear_error_flag (&ret);
 
