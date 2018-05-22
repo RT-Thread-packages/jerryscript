@@ -226,7 +226,7 @@ char jerry_int_to_hex(int value)
     if (value < 10)
         return '0' + value;
 
-    return 'a' + value - 10;
+    return 'A' + value - 10;
 }
 
 static int hex2int(const char *str)
