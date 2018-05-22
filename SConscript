@@ -71,10 +71,9 @@ path += [jerry_ext_dir + '/handler']
 path += [jerry_ext_dir + '/include']
 path += [jerry_ext_dir + '/module']
 
-LOCAL_CCFLAGS    = " -std=c99"
 LOCAL_CPPDEFINES = ['JERRY_JS_PARSER', 'JERRY_ENABLE_ERROR_MESSAGES']
 
 group = DefineGroup('JerryScript', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = path, 
-    LOCAL_CPPDEFINES = LOCAL_CPPDEFINES, LOCAL_CCFLAGS = LOCAL_CCFLAGS)
+    LOCAL_CPPDEFINES = LOCAL_CPPDEFINES)
 
 Return('group')
