@@ -65,7 +65,7 @@ js_buffer_t *jerry_buffer_find(const jerry_value_t obj)
     return NULL;
 }
 
-static DECL_FUNC_ARGS(jerry_buffer_read_bytes, int bytes, bool big_endian)
+static DECL_FUNC_ARGS(jerry_buffer_read_bytes, int bytes, bool big_endian, bool sign)
 {
     // requires: this is a JS buffer object created with jerry_buffer_create,
     //             argv[0] should be an offset into the buffer, but will treat
@@ -101,6 +101,16 @@ static DECL_FUNC_ARGS(jerry_buffer_read_bytes, int bytes, bool big_endian)
         value <<= 8;
         value |= buf->buffer[offset];
         offset += dir;
+    }
+
+    if (sign)
+    {
+        if (bytes == 1)
+            return jerry_create_number((int8_t)value);
+        else if (bytes == 2)
+            return jerry_create_number((int16_t)value);
+        else if (bytes == 4)
+            return jerry_create_number((int32_t)value);
     }
 
     return jerry_create_number(value);
@@ -142,8 +152,7 @@ static DECL_FUNC_ARGS(jerry_buffer_write_bytes, int bytes, bool big_endian)
     uint32_t beyond = offset + bytes;
     if (beyond > buf->bufsize)
     {
-        printf("bufsize %d, write attempted from %d to %d\n",
-               buf->bufsize, offset, beyond);
+        printf("bufsize %d, write attempted from %d to %d\n",  (int)buf->bufsize, (int)offset, (int)beyond);
         return jerry_create_undefined();
     }
 
@@ -163,27 +172,52 @@ static DECL_FUNC_ARGS(jerry_buffer_write_bytes, int bytes, bool big_endian)
 
 DECLARE_HANDLER(readUInt8)
 {
-    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 1, true);
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 1, true, false);
+}
+
+DECLARE_HANDLER(readInt8)
+{
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 1, true, true);
 }
 
 DECLARE_HANDLER(readUInt16BE)
 {
-    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 2, true);
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 2, true, false);
+}
+
+DECLARE_HANDLER(readInt16BE)
+{
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 2, true, true);
 }
 
 DECLARE_HANDLER(readUInt16LE)
 {
-    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 2, false);
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 2, false, false);
+}
+
+DECLARE_HANDLER(readInt16LE)
+{
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 2, false, true);
 }
 
 DECLARE_HANDLER(readUInt32BE)
 {
-    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 4, true);
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 4, true, false);
+}
+
+DECLARE_HANDLER(readInt32BE)
+{
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 4, true, true);
 }
 
 DECLARE_HANDLER(readUInt32LE)
 {
-    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 4, false);
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 4, false, false);
+}
+
+DECLARE_HANDLER(readInt32LE)
+{
+    return jerry_buffer_read_bytes(func_value, this_value, args, args_cnt, 4, false, true);
 }
 
 DECLARE_HANDLER(writeUInt8)
@@ -646,7 +680,7 @@ jerry_value_t jerry_buffer_create(uint32_t size, js_buffer_t **ret_buf)
 
     if (size > maxLength)
     {
-        printf("size: %d\n", size);
+        printf("size: %d\n", (int)size);
         return jerry_create_undefined();
     }
 
@@ -790,11 +824,11 @@ DECLARE_HANDLER(Buffer)
                 }
             }
 
-            size = size/2;
+            size = size / 2;
         }
         else
         {
-            data = str;
+            data = (uint8_t *)str;
         }
 
         jerry_value_t new_buf = jerry_buffer_create(size, &buf);
@@ -824,14 +858,19 @@ int js_buffer_init(void)
 
     jerry_buffer_prototype = jerry_create_object();
     REGISTER_METHOD(jerry_buffer_prototype, readUInt8);
+    REGISTER_METHOD(jerry_buffer_prototype, readInt8);
     REGISTER_METHOD(jerry_buffer_prototype, writeUInt8);
     REGISTER_METHOD(jerry_buffer_prototype, readUInt16BE);
+    REGISTER_METHOD(jerry_buffer_prototype, readInt16BE);
     REGISTER_METHOD(jerry_buffer_prototype, writeUInt16BE);
     REGISTER_METHOD(jerry_buffer_prototype, readUInt16LE);
+    REGISTER_METHOD(jerry_buffer_prototype, readInt16LE);
     REGISTER_METHOD(jerry_buffer_prototype, writeUInt16LE);
     REGISTER_METHOD(jerry_buffer_prototype, readUInt32BE);
+    REGISTER_METHOD(jerry_buffer_prototype, readInt32BE);
     REGISTER_METHOD(jerry_buffer_prototype, writeUInt32BE);
     REGISTER_METHOD(jerry_buffer_prototype, readUInt32LE);
+    REGISTER_METHOD(jerry_buffer_prototype, readInt32LE);
     REGISTER_METHOD(jerry_buffer_prototype, writeUInt32LE);
     REGISTER_METHOD(jerry_buffer_prototype, readFloatBE);
     REGISTER_METHOD(jerry_buffer_prototype, readDoubleBE);
