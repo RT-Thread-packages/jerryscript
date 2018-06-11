@@ -6,8 +6,10 @@
 
 #include "jerry_util.h"
 
+static rt_mutex_t _call_func_lock = RT_NULL;
+
 void js_set_property(const jerry_value_t obj, const char *name,
-    const jerry_value_t prop)
+                     const jerry_value_t prop)
 {
     jerry_value_t str = jerry_create_string((const jerry_char_t *)name);
     jerry_set_property(obj, str, prop);
@@ -26,17 +28,17 @@ jerry_value_t js_get_property(const jerry_value_t obj, const char *name)
 }
 
 void js_set_string_property(const jerry_value_t obj, const char *name,
-    char* value)
+                            char* value)
 {
     jerry_value_t str       = jerry_create_string((const jerry_char_t *)name);
     jerry_value_t value_str = jerry_create_string((const jerry_char_t *)value);
     jerry_set_property(obj, str, value_str);
     jerry_release_value (str);
-	jerry_release_value (value_str);
+    jerry_release_value (value_str);
 }
 
 void js_add_function(const jerry_value_t obj, const char *name,
-    jerry_external_handler_t func)
+                     jerry_external_handler_t func)
 {
     jerry_value_t str = jerry_create_string((const jerry_char_t *)name);
     jerry_value_t jfunc = jerry_create_external_function(func);
@@ -64,15 +66,29 @@ char *js_value_to_string(const jerry_value_t value)
     return str;
 }
 
+jerry_value_t js_call_func_obj(const jerry_value_t func_obj_val, /**< function object to call */
+                               const jerry_value_t this_val, /**< object for 'this' binding */
+                               const jerry_value_t args_p[], /**< function's call arguments */
+                               jerry_size_t args_count) /**< number of the arguments */
+{
+    jerry_value_t ret;
+
+    rt_mutex_take(_call_func_lock, RT_WAITING_FOREVER);
+    ret = jerry_call_function(func_obj_val, this_val, args_p, args_count);
+    rt_mutex_release(_call_func_lock);
+
+    return ret;
+}
+
 jerry_value_t js_call_function(const jerry_value_t obj, const char *name,
-    const jerry_value_t args[], jerry_size_t args_cnt)
+                               const jerry_value_t args[], jerry_size_t args_cnt)
 {
     jerry_value_t ret;
     jerry_value_t function = js_get_property(obj, name);
 
     if (jerry_value_is_function(function))
     {
-        ret = jerry_call_function(function, obj, args, args_cnt);
+        ret = js_call_func_obj(function, obj, args, args_cnt);
     }
     else
     {
@@ -84,7 +100,7 @@ jerry_value_t js_call_function(const jerry_value_t obj, const char *name,
 }
 
 bool object_dump_foreach(const jerry_value_t property_name,
-    const jerry_value_t property_value, void *user_data_p)
+                         const jerry_value_t property_value, void *user_data_p)
 {
     char *str;
     int str_size;
@@ -226,6 +242,8 @@ extern int js_buffer_init();
 
 int js_util_init(void)
 {
+    _call_func_lock = rt_mutex_create("call_func", RT_IPC_FLAG_FIFO);
+
     js_console_init();
     js_module_init();
     js_buffer_init();
@@ -237,6 +255,8 @@ extern int js_buffer_cleanup();
 
 int js_util_cleanup(void)
 {
+    rt_mutex_delete(_call_func_lock);
+	
     js_buffer_cleanup();
     return 0;
 }
