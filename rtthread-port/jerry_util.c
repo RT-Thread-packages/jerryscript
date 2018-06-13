@@ -182,41 +182,37 @@ void js_value_dump(jerry_value_t value)
         printf("what?");
     }
 }
-
+#include <dfs_posix.h>
 int js_read_file(const char* filename, char **script)
 {
     FILE *fp;
     int length = 0;
-
+    struct stat statbuf;
     if (!filename || !script) return 0;
 
-    fp = fopen(filename, "rb");
-    if (fp)
+    stat(filename, &statbuf);
+    length = statbuf.st_size;
+
+    if(!length) return 0;
+
+    *script = (char *)rt_malloc(length + 1);
+    if(!(*script)) retrun 0;
+    (*script)[length] = '\0';
+    fp = fopen(filename,"rb");
+    if(!fp) 
     {
-        fseek(fp, 0, SEEK_END);
-        length = ftell(fp);
-        fseek(fp, 0, SEEK_SET);
-
-        if (length)
-        {
-            char *script_str = (char*) malloc (length + 1);
-            if (script_str)
-            {
-                script_str[length] = '\0';
-                if (fread(script_str, length, 1, fp) == 1)
-                {
-                    *script = script_str;
-                }
-                else
-                {
-                    printf("read failed!\n");
-                }
-            }
-            else length = 0;
-        }
-        fclose(fp);
+        rt_free(*script);
+        *script = RT_NULL;
+        return 0;
     }
-
+    if(fread(*script,length,1,fp)) != 1)
+    {
+        length = 0;
+        rt_free(*script);
+        *script = RT_NULL;
+        printf("read failed!\n");
+    }
+    fclose(fp);
     return length;
 }
 
