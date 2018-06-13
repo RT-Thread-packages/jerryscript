@@ -15,7 +15,6 @@
 #define PATH_MAX    256
 #endif
 
-char *strdup(const char *);
 char *getcwd(char *buf, size_t size);
 
 typedef jerry_value_t (*module_init_func_t)(void);
@@ -28,7 +27,7 @@ char *js_module_dirname(char *path)
 
     if (!path || !*path) return NULL;
 
-    s = strdup(path);
+    s = rt_strdup(path);
     if (!s) return NULL;
 
     i = strlen(s)-1;
@@ -88,7 +87,7 @@ char *js_module_normalize_path(const char *directory, const char *filename)
     }
     else
     {
-        fullpath = strdup(filename); /* copy string */
+        fullpath = rt_strdup(filename); /* copy string */
 
         if (fullpath == NULL)
             return NULL;
