@@ -41,7 +41,7 @@ void jerry_port_fatal (jerry_fatal_code_t code)
 /*
  *  I/O Port API
  */
-#define RT_JS_CONSOLEBUF_SIZE   128
+#define RT_JS_CONSOLEBUF_SIZE   256
 static char rt_log_buf[RT_JS_CONSOLEBUF_SIZE];
 
 /**

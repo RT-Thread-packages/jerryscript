@@ -33,16 +33,18 @@ extern "C"
 #endif
 
 void js_set_property(const jerry_value_t obj, const char *name,
-    const jerry_value_t prop);
+                     const jerry_value_t prop);
 void js_set_string_property(const jerry_value_t obj, const char *name,
-    char* value);
+                            char* value);
 
 jerry_value_t js_get_property(const jerry_value_t obj, const char *name);
 
 void js_add_function(const jerry_value_t obj, const char *name,
-    jerry_external_handler_t func);
+                     jerry_external_handler_t func);
+jerry_value_t js_call_func_obj(const jerry_value_t func_obj_val, const jerry_value_t this_val,
+                               const jerry_value_t args_p[], jerry_size_t args_count);
 jerry_value_t js_call_function(const jerry_value_t obj, const char *name,
-    const jerry_value_t args[], jerry_size_t args_cnt);
+                               const jerry_value_t args[], jerry_size_t args_cnt);
 
 char *js_value_to_string(const jerry_value_t value);
 
