@@ -54,7 +54,7 @@ char *js_value_to_string(const jerry_value_t value)
     int len;
     char *str;
 
-    len = jerry_get_string_length(value);
+    len = jerry_get_utf8_string_size(value);
 
     str = (char*)malloc(len + 1);
     if (str)
