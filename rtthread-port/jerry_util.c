@@ -252,6 +252,7 @@ extern int js_buffer_cleanup();
 int js_util_cleanup(void)
 {
     rt_mutex_delete(_call_func_lock);
+    _call_func_lock = RT_NULL;
 	
     js_buffer_cleanup();
     return 0;
