@@ -73,6 +73,9 @@ jerry_value_t js_call_func_obj(const jerry_value_t func_obj_val, /**< function o
 {
     jerry_value_t ret;
 
+    if (_call_func_lock == RT_NULL)
+        return jerry_create_null();
+
     rt_mutex_take(_call_func_lock, RT_WAITING_FOREVER);
     ret = jerry_call_function(func_obj_val, this_val, args_p, args_count);
     rt_mutex_release(_call_func_lock);
