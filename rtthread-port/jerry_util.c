@@ -3,10 +3,10 @@
 #include <stdlib.h>
 
 #include <rtthread.h>
-
+#include <dfs_posix.h>
 #include "jerry_util.h"
 
-static rt_mutex_t _call_func_lock = RT_NULL;
+static rt_mutex_t _util_lock = RT_NULL;
 
 void js_set_property(const jerry_value_t obj, const char *name,
                      const jerry_value_t prop)
@@ -73,12 +73,9 @@ jerry_value_t js_call_func_obj(const jerry_value_t func_obj_val, /**< function o
 {
     jerry_value_t ret;
 
-    if (_call_func_lock == RT_NULL)
-        return jerry_create_null();
-
-    rt_mutex_take(_call_func_lock, RT_WAITING_FOREVER);
+    js_util_lock();
     ret = jerry_call_function(func_obj_val, this_val, args_p, args_count);
-    rt_mutex_release(_call_func_lock);
+    js_util_unlock();
 
     return ret;
 }
@@ -201,7 +198,7 @@ void js_value_dump(jerry_value_t value)
         printf("what?");
     }
 }
-#include <dfs_posix.h>
+
 int js_read_file(const char* filename, char **script)
 {
     FILE *fp;
@@ -238,10 +235,12 @@ int js_read_file(const char* filename, char **script)
 extern int js_console_init();
 extern int js_module_init();
 extern int js_buffer_init();
+extern int js_buffer_cleanup();
 
 int js_util_init(void)
 {
-    _call_func_lock = rt_mutex_create("call_func", RT_IPC_FLAG_FIFO);
+    if (_util_lock == RT_NULL)
+        _util_lock = rt_mutex_create("call_func", RT_IPC_FLAG_FIFO);
 
     js_console_init();
     js_module_init();
@@ -250,13 +249,19 @@ int js_util_init(void)
     return 0;
 }
 
-extern int js_buffer_cleanup();
-
 int js_util_cleanup(void)
 {
-    rt_mutex_delete(_call_func_lock);
-    _call_func_lock = RT_NULL;
-	
     js_buffer_cleanup();
+	
     return 0;
+}
+
+int js_util_lock(void)
+{
+    return rt_mutex_take(_util_lock, RT_WAITING_FOREVER);
+}
+
+int js_util_unlock(void)
+{
+    return rt_mutex_release(_util_lock);
 }

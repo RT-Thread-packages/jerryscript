@@ -339,7 +339,7 @@ DECLARE_HANDLER(toString)
         }
 
         jerry_value_t jstr;
-        jstr = jerry_create_string_sz_from_utf8((jerry_char_t *)str, end - start);
+        jstr = jerry_create_string_sz_from_utf8((jerry_char_t *)str, index - start);
         free(str);
         free(enc);
         return jstr;
