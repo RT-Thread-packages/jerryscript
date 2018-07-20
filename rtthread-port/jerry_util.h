@@ -53,6 +53,8 @@ int js_read_file(const char* filename, char **script);
 
 int js_util_init(void);
 int js_util_cleanup(void);
+int js_util_lock(void);
+int js_util_unlock(void);
 
 #ifdef __cplusplus
 }
