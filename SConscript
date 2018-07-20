@@ -71,9 +71,14 @@ path += [jerry_ext_dir + '/handler']
 path += [jerry_ext_dir + '/include']
 path += [jerry_ext_dir + '/module']
 
+LOCAL_CCFLAGS = ''
+import rtconfig
+if rtconfig.CROSS_TOOL == 'keil':
+    LOCAL_CCFLAGS += ' --gnu'
+
 LOCAL_CPPDEFINES = ['JERRY_JS_PARSER', 'JERRY_ENABLE_ERROR_MESSAGES']
 
 group = DefineGroup('JerryScript', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = path, 
-    LOCAL_CPPDEFINES = LOCAL_CPPDEFINES)
+    LOCAL_CPPDEFINES = LOCAL_CPPDEFINES, LOCAL_CCFLAGS = LOCAL_CCFLAGS)
 
 Return('group')
