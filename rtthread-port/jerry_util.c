@@ -182,6 +182,7 @@ void js_value_dump(jerry_value_t value)
         {
             jerry_value_t item = jerry_get_property_by_index(value, index);
             js_value_dump(item);
+            printf(" , ");
             jerry_release_value(item);
         }
         printf("]\n");
@@ -236,6 +237,7 @@ extern int js_console_init();
 extern int js_module_init();
 extern int js_buffer_init();
 extern int js_buffer_cleanup();
+extern int js_event_init(void);
 
 int js_util_init(void)
 {
@@ -245,6 +247,7 @@ int js_util_init(void)
     js_console_init();
     js_module_init();
     js_buffer_init();
+    js_event_init();
 
     return 0;
 }
@@ -252,7 +255,7 @@ int js_util_init(void)
 int js_util_cleanup(void)
 {
     js_buffer_cleanup();
-	
+
     return 0;
 }
 

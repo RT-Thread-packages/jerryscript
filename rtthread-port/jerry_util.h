@@ -18,6 +18,8 @@
     js_add_function (OBJ, # NAME, NAME ## _handler)
 #define REGISTER_METHOD_ALIAS(OBJ, NAME, HANDLER) \
     js_add_function (OBJ, # NAME, HANDLER)
+#define REGISTER_METHOD_NAME(OBJ, NAME, HANDLER)  \
+    js_add_function (OBJ, NAME, HANDLER ## _handler)
 
 #ifdef RT_USING_FINSH
 #include <finsh.h>
