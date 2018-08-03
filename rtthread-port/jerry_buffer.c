@@ -316,9 +316,11 @@ DECLARE_HANDLER(toString)
 
     if (strequal(encoding, "utf8"))
     {
-        free(enc);
-        return jerry_create_string_sz_from_utf8((jerry_char_t *)buf->buffer,
-                                                buf->bufsize);
+        jerry_char_t *str = (jerry_char_t *)buf->buffer;
+
+        str += start;
+        rt_free(enc);
+        return jerry_create_string_sz_from_utf8(str, end - start);
     }
     else if (strequal(encoding, "ascii"))
     {
