@@ -63,6 +63,8 @@ static rt_bool_t has_callback(struct js_callback *callback)
         {
             return RT_TRUE;
         }
+
+        _callback = _callback->next;
     }
 
     return RT_FALSE;

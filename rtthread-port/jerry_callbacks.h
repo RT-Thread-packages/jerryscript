@@ -1,7 +1,7 @@
 
 
-#ifndef JERRY_BUFFER_H__
-#define JERRY_BUFFER_H__
+#ifndef JERRY_CALLBACKS_H__
+#define JERRY_CALLBACKS_H__
 
 #include <rtthread.h>
 #include <jerry_util.h>
