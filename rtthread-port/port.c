@@ -117,3 +117,35 @@ double jerry_port_get_current_time (void)
 {
     return rt_tick_get() * RT_TICK_PER_SECOND / 1000;
 }
+
+/**
+ * Pointer to the current instance.
+ * Note that it is a global variable, and is not a thread safe implementation.
+ */
+static jerry_instance_t *current_instance_p = NULL;
+
+/**
+ * Set the current_instance_p as the passed pointer.
+ */
+void
+jerry_port_default_set_instance (jerry_instance_t *instance_p) /**< points to the created instance */
+{
+    current_instance_p = instance_p;
+} /* jerry_port_default_set_instance */
+
+/**
+ * Get the current instance.
+ *
+ * @return the pointer to the current instance
+ */
+jerry_instance_t *
+jerry_port_get_current_instance (void)
+{
+    return current_instance_p;
+} /* jerry_port_get_current_instance */
+
+
+void jerry_port_sleep(uint32_t sleep_time)
+{
+    rt_thread_delay(rt_tick_from_millisecond(sleep_time));
+}

@@ -50,7 +50,6 @@ src = jerry_core + jerry_ext
 
 path = [cwd]
 path += [cwd + '/rtthread-port']
-path += [jerry_core_dir]
 path += [jerry_core_dir + '/api']
 path += [jerry_core_dir + '/debugger']
 path += [jerry_core_dir + '/ecma/base']
