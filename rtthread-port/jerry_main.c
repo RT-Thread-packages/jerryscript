@@ -47,8 +47,6 @@ int jerry_main(int argc, char** argv)
             jerry_value_t ret = jerry_run(parsed_code);
             if (jerry_value_is_error (ret))
             {
-                jerry_value_clear_error_flag (&ret);
-
                 jerry_value_t err_str_val = jerry_value_to_string (ret);
                 char *err_string = js_value_to_string(err_str_val);
                 if (err_string)
