@@ -31,9 +31,25 @@
  *
  * Example: a libc-based port may implement this with exit() or abort(), or both.
  */
-void jerry_port_fatal (jerry_fatal_code_t code)
+void jerry_port_fatal(jerry_fatal_code_t code)
 {
-    rt_kprintf("jerryScritp fatal...\n");
+    rt_kprintf("jerryScritp fatal [");
+    switch (code)
+    {
+    case ERR_OUT_OF_MEMORY:
+        rt_kprintf(" ERR_OUT_OF_MEMORY ");
+        break;
+    case ERR_SYSCALL:
+        rt_kprintf(" ERR_SYSCALL ");
+        break;
+    case ERR_REF_COUNT_LIMIT:
+        rt_kprintf(" ERR_REF_COUNT_LIMIT ");
+        break;
+    case ERR_FAILED_INTERNAL_ASSERTION:
+        rt_kprintf(" ERR_FAILED_INTERNAL_ASSERTION ");
+        break;
+    };
+    rt_kprintf("]...\n");
     rt_hw_interrupt_disable();
     while (1);
 }
