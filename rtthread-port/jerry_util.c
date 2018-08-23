@@ -5,6 +5,7 @@
 #include <rtthread.h>
 #include <dfs_posix.h>
 #include "jerry_util.h"
+#include <jerry_event.h>
 
 static rt_mutex_t _util_lock = RT_NULL;
 
@@ -216,7 +217,7 @@ int js_read_file(const char* filename, char **script)
     if(!(*script)) return 0;
     (*script)[length] = '\0';
     fp = fopen(filename,"rb");
-    if(!fp) 
+    if(!fp)
     {
         rt_free(*script);
         *script = RT_NULL;
@@ -237,7 +238,8 @@ extern int js_console_init();
 extern int js_module_init();
 extern int js_buffer_init();
 extern int js_buffer_cleanup();
-extern int js_event_init(void);
+
+static js_util_user _user_init = NULL, _user_cleanup = NULL;
 
 int js_util_init(void)
 {
@@ -248,6 +250,10 @@ int js_util_init(void)
     js_module_init();
     js_buffer_init();
     js_event_init();
+    if (_user_init != NULL)
+    {
+        _user_init();
+    }
 
     return 0;
 }
@@ -255,8 +261,23 @@ int js_util_init(void)
 int js_util_cleanup(void)
 {
     js_buffer_cleanup();
+    js_event_deinit();
+    if (_user_cleanup != NULL)
+    {
+        _user_cleanup();
+    }
 
     return 0;
+}
+
+void js_util_user_init(js_util_user func)
+{
+    _user_init = func;
+}
+
+void js_util_user_cleanup(js_util_user func)
+{
+    _user_cleanup = func;
 }
 
 int js_util_lock(void)

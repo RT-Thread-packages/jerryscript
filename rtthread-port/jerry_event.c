@@ -219,6 +219,7 @@ rt_bool_t js_emit_event(jerry_value_t obj, const char *event_name, const jerry_v
             {
                 rt_kprintf("error calling listener\n");
             }
+            jerry_release_value(ret);
             listener = listener->next;
         }
 
@@ -359,7 +360,6 @@ DECLARE_HANDLER(get_event_names)
 void js_destroy_emitter(jerry_value_t obj)
 {
     void* native_handle = NULL;
-    struct js_event *event = NULL;
 
     jerry_get_object_native_pointer(obj, &native_handle, NULL);
 
@@ -439,5 +439,12 @@ DECLARE_HANDLER(Event)
 int js_event_init(void)
 {
     REGISTER_HANDLER(Event);
+    return 0;
+}
+
+int js_event_deinit(void)
+{
+    if (_js_emitter_prototype)
+        jerry_release_value(_js_emitter_prototype);
     return 0;
 }

@@ -34,6 +34,8 @@ extern "C"
 {
 #endif
 
+typedef void(*js_util_user)(void);
+
 void js_set_property(const jerry_value_t obj, const char *name,
                      const jerry_value_t prop);
 void js_set_string_property(const jerry_value_t obj, const char *name,
@@ -57,6 +59,8 @@ int js_util_init(void);
 int js_util_cleanup(void);
 int js_util_lock(void);
 int js_util_unlock(void);
+void js_util_user_init(js_util_user func);
+void js_util_user_cleanup(js_util_user func);
 
 #ifdef __cplusplus
 }
