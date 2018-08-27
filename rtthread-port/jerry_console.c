@@ -17,7 +17,7 @@ DECLARE_HANDLER(dir)
     return jerry_create_undefined();
 }
 
-int js_console_init()
+int js_console_init(void)
 {
     jerry_value_t console = jerry_create_object();
     jerry_value_t global_obj = jerry_get_global_object();
