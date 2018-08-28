@@ -234,10 +234,10 @@ int js_read_file(const char* filename, char **script)
     return length;
 }
 
-extern int js_console_init();
-extern int js_module_init();
-extern int js_buffer_init();
-extern int js_buffer_cleanup();
+extern int js_console_init(void);
+extern int js_module_init(void);
+extern int js_buffer_init(void);
+extern int js_buffer_cleanup(void);
 
 static js_util_user _user_init = NULL, _user_cleanup = NULL;
 
