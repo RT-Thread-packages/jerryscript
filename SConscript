@@ -1,3 +1,4 @@
+import os
 from building import *
 
 # get current directory
@@ -79,5 +80,17 @@ LOCAL_CPPDEFINES = ['JERRY_JS_PARSER', 'JERRY_ENABLE_ERROR_MESSAGES']
 
 group = DefineGroup('JerryScript', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = path, 
     LOCAL_CPPDEFINES = LOCAL_CPPDEFINES, LOCAL_CCFLAGS = LOCAL_CCFLAGS)
+
+list = os.listdir(cwd + '/examples')
+
+if GetDepend('PKG_USING_JERRYSCRIPT'):
+
+    for d in list:
+
+        path = os.path.join(cwd, d)
+
+        if os.path.isfile(os.path.join(path, 'SConscript')):
+
+            group = group + SConscript(os.path.join(d, 'SConscript'))
 
 Return('group')
