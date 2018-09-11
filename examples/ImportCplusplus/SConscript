@@ -6,6 +6,6 @@ src = Glob('*.cpp')
 
 CPPPATH = [cwd]
 
-group = DefineGroup('JerryScript_demo_addCpp', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = CPPPATH)
+group = DefineGroup('JerryScript', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = CPPPATH)
 
 Return('group')

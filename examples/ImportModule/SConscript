@@ -6,6 +6,6 @@ src = Glob('*.c')
 
 CPPPATH = [cwd]
 
-group = DefineGroup('JerryScript_demo_addModule', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = CPPPATH)
+group = DefineGroup('JerryScript', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = CPPPATH)
 
 Return('group')
