@@ -27,7 +27,7 @@ DECLARE_HANDLER(setRadius)
     
     if(native_pointer)
     {
-        circle_t* circle = (circle_t*)native_pointer;
+        struct circle_t* circle = (struct circle_t*)native_pointer;
         
         double r = jerry_get_number_value(args[0]);
         circle->radius = r;
@@ -46,7 +46,7 @@ DECLARE_HANDLER(getRadius)
     
     if(native_pointer)
     {
-        circle_t* circle = (circle_t*)native_pointer;
+        struct circle_t* circle = (struct circle_t*)native_pointer;
        
         jerry_value_t js_radius = jerry_create_number(circle->radius);
         return js_radius;
@@ -59,8 +59,8 @@ jerry_value_t Circle_init()
 {
     jerry_value_t js_circle = jerry_create_object();
     
-    circle_t* circle = (circle_t*)malloc(sizeof(circle_t));
-    memset(circle,0,sizeof(circle_t));
+    struct circle_t* circle = (struct circle_t*)malloc(sizeof(struct circle_t));
+    memset(circle,0,sizeof(struct circle_t));
     
     jerry_set_object_native_pointer(js_circle,circle,&circle_info);
 
