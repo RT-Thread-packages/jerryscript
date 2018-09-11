@@ -39,8 +39,8 @@ Jerryscript on RT-Thread软件包遵循Apache-2.0 许可，详见 LICENSE 文件
 
 ## 3、使用Jerryscript on RT-Thread软件包
 
-- 如何导入C++API，请参考[ImportC++](examples/ImportC++/ImportCpp.md)
-- 如何添加builtin module，请参考[ImportModule](examples/ImportModule/ImportModule.md)
+- 如何导入C++API，请参考[ImportC++](examples/ImportCplusplus/README.md)
+- 如何添加builtin module，请参考[ImportModule](examples/ImportModule/README.md)
 
 ## 4、 注意事项
 
