@@ -2,7 +2,7 @@
 
 由于JerryScript是一款轻量级的JavaScript的引擎，因此它没有直接提供常见的builtin module。但是开发者可以根据自身需求，去添加相应module。
 
-阅读本文档前，请先阅读[ImportC++](./ImportC++/ImportCpp.md)。
+阅读本文档前，请先阅读[ImportC++](../ImportC++/ImportCpp.md)。
 
 ## 添加builtin module
 
