@@ -89,7 +89,7 @@ DECLARE_HANDLER(getWidth)
     
 }
 
-DECLARE_HANDLER(rectangle_addCpp)
+DECLARE_HANDLER(rectangle)
 {   
     if(args_cnt !=2 || !jerry_value_is_number(args[0]) || !jerry_value_is_number(args[1]))
         return jerry_create_undefined();
@@ -119,7 +119,7 @@ extern "C"
 {
     int js_example_rect_init(jerry_value_t obj)
     {
-        REGISTER_METHOD(obj, rectangle_addCpp);
+        REGISTER_METHOD(obj, rectangle);
         return 0;
     }
 }

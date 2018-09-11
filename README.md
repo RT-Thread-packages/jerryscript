@@ -262,7 +262,7 @@ DECLARE_HANDLER(getWidth)
     return jerry_create_undefined();
 }
 
-DECLARE_HANDLER(rectangle_init)
+DECLARE_HANDLER(rectangle)
 {
     /*入参判断*/
     if(args_cnt !=2 || !jerry_value_is_number(args[0]) || !jerry_value_is_number(args[1]))
@@ -270,7 +270,7 @@ DECLARE_HANDLER(rectangle_init)
     
     jerry_value_t js_rect = jerry_create_object(); //创建JS对象 js_rect
     
-    Rectangle* rectangle = new Rectangle(jerry_get_number_value(args[0]),jerry_get_number_value(args[1]));      /创建C++对象 rectangle
+    Rectangle* rectangle = new Rectangle(jerry_get_number_value(args[0]),jerry_get_number_value(args[1]));      //创建C++对象 rectangle
 
     jerry_set_object_native_pointer(js_rect, rectangle,&rectangle_info);    //把js_rect的native_pointer指向rectangle
     
@@ -295,7 +295,7 @@ extern "C"
 {
     int js_example_rect_init(jerry_value_t obj)
     {
-        REGISTER_METHOD(obj, rectangle_init); //为指定对象obj注册一个方法rectangle_init，这个对象可以是global_obj
+        REGISTER_METHOD(obj, rectangle); //为指定对象obj注册一个方法rectangle_init，这个对象可以是global_obj
         return 0;
     }
 }
