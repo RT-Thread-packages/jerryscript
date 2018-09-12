@@ -12,7 +12,7 @@ Jerryscript on RT-Thread软件包目录如下所示：
 
 |  名称 |  说明 |
 | - | - |
-| example | 示例代码，示范如何导入C++的API与添加builtin module |
+| examples | 示例代码，示范如何导入C++的API与添加builtin module |
 | jerryscript | jerryscript 官方库 |
 | rtthread-port | RT-Thread 移植代码目录 |
 
