@@ -6,14 +6,19 @@
 
 ## 添加builtin module
 
-当相应module的入口建立好后，只需要使用以下finsh命令即可:
+当相应module的入口建立好后，只需要使用以下宏导出命令即可:
 
-```
-JS_MODULE(NAME, MODULE_INIT)    //NAME ： module的名称 , MODULE_INIT ： module的入口函数
+```c
+JS_MODULE(NAME, MODULE_INIT);
+/*
+ * 其中
+ * NAME ： module的名称
+ * MODULE_INIT ： module的入口函数，它会返回一个JsObject对象，也即require('module')时返回的JsObject对象
+ */
 ```
 
 示例代码：
-```C
+```c
 jerry_value_t myModule_init(void)
 {
 
@@ -23,22 +28,22 @@ jerry_value_t myModule_init(void)
     // ...
     return obj;
 }
-
-JS_MODULE(myModule,myModule_init);
+JS_MODULE(myModule, myModule_init);
 ```
+
 以上代码就在JerryScript中创建里一个名为`myModule`的module，其返回值为`obj`。
 
 在JS脚本中，我们都是通过以下方式调用module的。
 
 ```JavaScript
-var mqtt = require('myModule')
+var mqtt = require('myModule');
 ```
 
 ## 示例说明
 
 本示例示范了如何添加builtin module。
 
-```C
+```c
 #include <rtthread.h>
 #include <jerry_util.h>
 
