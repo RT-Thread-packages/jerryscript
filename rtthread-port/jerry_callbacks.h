@@ -31,7 +31,7 @@ struct js_callback *js_add_callback(js_callback_func callback);
 void js_remove_callback(struct js_callback *callback);
 void js_remove_all_callbacks(void);
 void js_call_callback(struct js_callback *callback, const void *data, uint32_t size);
-void js_send_callback(struct js_callback *callback, const void *args, uint32_t size);
+rt_bool_t js_send_callback(struct js_callback *callback, const void *args, uint32_t size);
 void js_mq_func_set(js_mq_func signal);
 
 #ifdef __cplusplus

@@ -116,7 +116,7 @@ void js_call_callback(struct js_callback *callback, const void *data, uint32_t s
     }
 }
 
-void js_send_callback(struct js_callback *callback, const void *args, uint32_t size)
+rt_bool_t js_send_callback(struct js_callback *callback, const void *args, uint32_t size)
 {
     rt_bool_t ret = RT_FALSE;
     struct js_mq_callback *jmc = NULL;
@@ -143,6 +143,8 @@ void js_send_callback(struct js_callback *callback, const void *args, uint32_t s
             rt_free(jmc);
         }
     }
+    
+    return ret;
 }
 
 void js_mq_func_set(js_mq_func signal)

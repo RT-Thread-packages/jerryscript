@@ -6,6 +6,7 @@
 #include <dfs_posix.h>
 #include "jerry_util.h"
 #include <jerry_event.h>
+#include <jerry_message.h>
 
 static rt_mutex_t _util_lock = RT_NULL;
 
@@ -250,6 +251,7 @@ int js_util_init(void)
     js_module_init();
     js_buffer_init();
     js_event_init();
+    js_message_init();
     if (_user_init != NULL)
     {
         _user_init();
@@ -262,6 +264,7 @@ int js_util_cleanup(void)
 {
     js_buffer_cleanup();
     js_event_deinit();
+    js_message_deinit();
     if (_user_cleanup != NULL)
     {
         _user_cleanup();
