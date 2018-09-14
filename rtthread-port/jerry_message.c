@@ -3,7 +3,7 @@
 #include <jerry_message.h>
 #include <jerry_buffer.h>
 
-static jerry_value_t js_message_obj;
+static jerry_value_t js_message_obj = 0;
 static struct js_callback *js_message_cb = NULL;
 
 struct js_message
@@ -66,6 +66,9 @@ static void js_callback_message(const void *args, uint32_t size)
 
 DECLARE_HANDLER(Message)
 {
+    if (js_message_obj != 0)
+        return jerry_acquire_value(js_message_obj);
+
     js_message_obj = jerry_create_object();
     js_make_emitter(js_message_obj, jerry_create_undefined());
     js_message_cb = js_add_callback(js_callback_message);
@@ -91,7 +94,9 @@ int js_message_deinit(void)
 {
     if (js_message_cb)
     {
+        js_destroy_emitter(js_message_obj);
         jerry_release_value(js_message_obj);
+        js_message_obj = 0;
         js_message_cb = NULL;
     }
 

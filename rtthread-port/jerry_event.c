@@ -2,6 +2,7 @@
 
 #include <jerry_event.h>
 
+static jerry_value_t emitter = 0;
 static jerry_value_t _js_emitter_prototype = 0;
 
 struct js_listener
@@ -161,7 +162,7 @@ static void append_event(struct js_emitter *emitter, struct js_event *event)
     _event->next = event;
 }
 
-jerry_value_t js_add_event_listener(jerry_value_t obj, const char *event_name, jerry_value_t func)
+void js_add_event_listener(jerry_value_t obj, const char *event_name, jerry_value_t func)
 {
     void* native_handle = NULL;
     struct js_event *event = NULL;
@@ -175,7 +176,7 @@ jerry_value_t js_add_event_listener(jerry_value_t obj, const char *event_name, j
         event = (struct js_event *)rt_malloc(sizeof(struct js_event));
         if (!event)
         {
-            return jerry_create_undefined();
+            return;
         }
 
         event->next = NULL;
@@ -189,15 +190,13 @@ jerry_value_t js_add_event_listener(jerry_value_t obj, const char *event_name, j
     {
         rt_free(event->name);
         rt_free(event);
-        return jerry_create_undefined();
+        return ;
     }
 
     listener->func = jerry_acquire_value(func);
     listener->next = NULL;
 
     append_listener(event, listener);
-
-    return jerry_create_undefined();
 }
 
 rt_bool_t js_emit_event(jerry_value_t obj, const char *event_name, const jerry_value_t argv[], const jerry_length_t argc)
@@ -392,7 +391,7 @@ void js_destroy_emitter(jerry_value_t obj)
 
 static void js_event_init_prototype(void)
 {
-    if (!_js_emitter_prototype)
+    if (_js_emitter_prototype == 0)
     {
         _js_emitter_prototype = jerry_create_object();
 
@@ -431,9 +430,12 @@ void js_make_emitter(jerry_value_t obj, jerry_value_t prototype)
 
 DECLARE_HANDLER(Event)
 {
-    jerry_value_t emitter = jerry_create_object();
+    if (emitter != 0)
+        return jerry_acquire_value(emitter);
+
+    emitter = jerry_create_object();
     js_make_emitter(emitter, jerry_create_undefined());
-    return emitter;
+    return jerry_acquire_value(emitter);
 }
 
 int js_event_init(void)
@@ -444,7 +446,15 @@ int js_event_init(void)
 
 int js_event_deinit(void)
 {
-    if (_js_emitter_prototype)
+    if (emitter != 0)
+    {
+        js_destroy_emitter(emitter);
+        jerry_release_value(emitter);
+        emitter = 0;
+    }
+
+    if (_js_emitter_prototype != 0)
         jerry_release_value(_js_emitter_prototype);
+
     return 0;
 }

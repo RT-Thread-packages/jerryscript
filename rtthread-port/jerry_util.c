@@ -262,9 +262,9 @@ int js_util_init(void)
 
 int js_util_cleanup(void)
 {
-    js_buffer_cleanup();
-    js_event_deinit();
     js_message_deinit();
+    js_event_deinit();
+    js_buffer_cleanup();
     if (_user_cleanup != NULL)
     {
         _user_cleanup();
