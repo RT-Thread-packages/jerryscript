@@ -5,6 +5,8 @@
 static jerry_value_t emitter = 0;
 static jerry_value_t _js_emitter_prototype = 0;
 
+static void remove_event(struct js_emitter *emitter, struct js_event *event);
+
 struct js_listener
 {
     jerry_value_t func;
@@ -40,20 +42,10 @@ static void js_emitter_free_cb(void *native)
 
     while (event)
     {
-        struct js_listener *_listener, *listener = event->listeners;
-
-        while (listener != NULL)
-        {
-            _listener = listener;
-            listener = listener->next;
-            free_listener(_listener);
-        }
-
         _event = event;
         event = event->next;
 
-        rt_free(_event->name);
-        rt_free(_event);
+        remove_event(emitter, _event);
     }
 
     rt_free(emitter);
@@ -162,67 +154,101 @@ static void append_event(struct js_emitter *emitter, struct js_event *event)
     _event->next = event;
 }
 
+static void remove_event(struct js_emitter *emitter, struct js_event *event)
+{
+    struct js_event *_event = emitter->events;
+    struct js_listener *_listener, *listener = event->listeners;
+
+    if (emitter->events == event)
+    {
+        emitter->events = event->next;
+    }
+    else
+    {
+        while (_event->next == event)
+        {
+            _event->next = event->next;
+        }
+    }
+
+    while (listener != NULL)
+    {
+        _listener = listener;
+        listener = listener->next;
+        free_listener(_listener);
+    }
+
+    rt_free(event->name);
+    rt_free(event);
+}
+
 void js_add_event_listener(jerry_value_t obj, const char *event_name, jerry_value_t func)
 {
-    void* native_handle = NULL;
-    struct js_event *event = NULL;
-    struct js_listener *listener = NULL;
+    void *native_handle = NULL;
 
     jerry_get_object_native_pointer(obj, &native_handle, NULL);
-
-    event = find_event((struct js_emitter *)native_handle, event_name);
-    if (!event)
+    if (native_handle)
     {
-        event = (struct js_event *)rt_malloc(sizeof(struct js_event));
+        struct js_emitter *emitter = (struct js_emitter *)native_handle;
+        struct js_event *event = NULL;
+        struct js_listener *listener = NULL;
+
+        event = find_event(emitter, event_name);
         if (!event)
         {
+            event = (struct js_event *)rt_malloc(sizeof(struct js_event));
+            if (!event)
+            {
+                return;
+            }
+
+            event->next = NULL;
+            event->listeners = NULL;
+            event->name = rt_strdup(event_name);
+            append_event((struct js_emitter *)native_handle, event);
+        }
+
+        listener = (struct js_listener *)rt_malloc(sizeof(struct js_listener));
+        if (!listener)
+        {
+            rt_free(event->name);
+            rt_free(event);
             return;
         }
 
-        event->next = NULL;
-        event->listeners = NULL;
-        event->name = rt_strdup(event_name);
-        append_event((struct js_emitter *)native_handle, event);
+        listener->func = jerry_acquire_value(func);
+        listener->next = NULL;
+
+        append_listener(event, listener);
     }
-
-    listener = (struct js_listener *)rt_malloc(sizeof(struct js_listener));
-    if (!listener)
-    {
-        rt_free(event->name);
-        rt_free(event);
-        return ;
-    }
-
-    listener->func = jerry_acquire_value(func);
-    listener->next = NULL;
-
-    append_listener(event, listener);
 }
 
 rt_bool_t js_emit_event(jerry_value_t obj, const char *event_name, const jerry_value_t argv[], const jerry_length_t argc)
 {
-    void* native_handle = NULL;
-    struct js_event *event = NULL;
+    void *native_handle = NULL;
 
     jerry_get_object_native_pointer(obj, &native_handle, NULL);
-
-    event = find_event((struct js_emitter *)native_handle, event_name);
-    if (event)
+    if (native_handle)
     {
-        struct js_listener *listener = event->listeners;
-
-        while (listener)
+        struct js_emitter *emitter = (struct js_emitter *)native_handle;
+        struct js_event *event = find_event(emitter, event_name);
+        if (event)
         {
-            jerry_value_t ret = jerry_call_function(listener->func, obj, argv, argc);
-            if (jerry_value_is_error(ret))
-            {
-                rt_kprintf("error calling listener\n");
-            }
-            jerry_release_value(ret);
-            listener = listener->next;
-        }
+            struct js_listener *listener = event->listeners;
 
-        return RT_TRUE;
+            while (listener)
+            {
+                jerry_value_t ret = jerry_call_function(listener->func, obj, argv, argc);
+                if (jerry_value_is_error(ret))
+                {
+                    rt_kprintf("error calling listener\n");
+                }
+                jerry_release_value(ret);
+                listener = listener->next;
+            }
+
+            return RT_TRUE;
+        }
     }
 
     return RT_FALSE;
@@ -251,24 +277,24 @@ DECLARE_HANDLER(remove_listener)
         char *name = js_value_to_string(args[0]);
         if (name)
         {
-            void* native_handle = NULL;
-            struct js_event *event = NULL;
-            struct js_listener *listener = NULL;
+            void *native_handle = NULL;
 
             jerry_get_object_native_pointer(this_value, &native_handle, NULL);
-
-            event = find_event((struct js_emitter *)native_handle, name);
-            if (event)
+            if (native_handle)
             {
-                listener = find_listener(event, args[1]);
-                if (listener)
+                struct js_emitter *emitter = (struct js_emitter *)native_handle;
+                struct js_event *event = find_event(emitter, name);
+                if (event)
                 {
-                    remove_listener(event, listener);
-                    free_listener(listener);
+                    struct js_listener *listener = find_listener(event, args[1]);
+                    if (listener)
+                    {
+                        remove_listener(event, listener);
+                        free_listener(listener);
+                    }
                 }
             }
         }
-
         rt_free(name);
     }
 
@@ -282,24 +308,52 @@ DECLARE_HANDLER(remove_all_listeners)
         char *name = js_value_to_string(args[0]);
         if (name)
         {
-            void* native_handle = NULL;
-            struct js_event *event = NULL;
+            void *native_handle = NULL;
 
             jerry_get_object_native_pointer(this_value, &native_handle, NULL);
-
-            event = find_event((struct js_emitter *)native_handle, name);
-            if (event)
+            if (native_handle)
             {
-                struct js_listener *_listener, *listener = event->listeners;
-
-                while (listener != NULL)
+                struct js_emitter *emitter = (struct js_emitter *)native_handle;
+                struct js_event *event = find_event(emitter, name);
+                if (event)
                 {
-                    _listener = listener;
-                    listener = listener->next;
-                    free_listener(_listener);
-                }
+                    struct js_listener *_listener, *listener = event->listeners;
 
-                event->listeners = NULL;
+                    while (listener != NULL)
+                    {
+                        _listener = listener;
+                        listener = listener->next;
+                        free_listener(_listener);
+                    }
+
+                    event->listeners = NULL;
+                }
+            }
+        }
+        rt_free(name);
+    }
+
+    return jerry_acquire_value(this_value);
+}
+
+DECLARE_HANDLER(remove_event)
+{
+    if (args_cnt == 1)
+    {
+        char *name = js_value_to_string(args[0]);
+        if (name)
+        {
+            void *native_handle = NULL;
+
+            jerry_get_object_native_pointer(this_value, &native_handle, NULL);
+            if (native_handle)
+            {
+                struct js_emitter *emitter = (struct js_emitter *)native_handle;
+                struct js_event *event = find_event(emitter, name);
+                if (event)
+                {
+                    remove_event(emitter, event);
+                }
             }
         }
 
@@ -329,39 +383,45 @@ DECLARE_HANDLER(emit_event)
 
 DECLARE_HANDLER(get_event_names)
 {
-    uint32_t i = 0;
-    void* native_handle = NULL;
-    struct js_event *event = NULL;
-    jerry_value_t ret;
-
+    void *native_handle = NULL;
 
     jerry_get_object_native_pointer(this_value, &native_handle, NULL);
-
-    event = ((struct js_emitter *)native_handle)->events;
-    while (event)
+    if (native_handle)
     {
-        i++;
-        event = event->next;
+        struct js_emitter *emitter = (struct js_emitter *)native_handle;
+        struct js_event *event = emitter->events;
+        uint32_t index = 0;
+        jerry_value_t ret = 0;
+
+        while (event)
+        {
+            index ++;
+            event = event->next;
+        }
+
+        ret = jerry_create_array(index);
+        if (ret)
+        {
+            event = emitter->events;
+            index = 0;
+            while (event)
+            {
+                jerry_set_property_by_index(ret, index++, jerry_create_string((jerry_char_t *)event->name));
+                event = event->next;
+            }
+
+            return ret;
+        }
     }
 
-    ret = jerry_create_array(i);
-    event = ((struct js_emitter *)native_handle)->events;
-    i = 0;
-    while (event)
-    {
-        jerry_set_property_by_index(ret, i++, jerry_create_string((jerry_char_t *)event->name));
-        event = event->next;
-    }
-
-    return ret;
+    return jerry_create_undefined();
 }
 
 void js_destroy_emitter(jerry_value_t obj)
 {
-    void* native_handle = NULL;
+    void *native_handle = NULL;
 
     jerry_get_object_native_pointer(obj, &native_handle, NULL);
-
     if (native_handle)
     {
         struct js_emitter *emitter = (struct js_emitter *)native_handle;
@@ -369,20 +429,10 @@ void js_destroy_emitter(jerry_value_t obj)
 
         while (event)
         {
-            struct js_listener *_listener, *listener = event->listeners;
-
-            while (listener != NULL)
-            {
-                _listener = listener;
-                listener = listener->next;
-                free_listener(_listener);
-            }
-
             _event = event;
             event = event->next;
 
-            rt_free(_event->name);
-            rt_free(_event);
+            remove_event(emitter, _event);
         }
 
         emitter->events = NULL;
@@ -399,6 +449,7 @@ static void js_event_init_prototype(void)
         REGISTER_METHOD_NAME(_js_emitter_prototype, "addListener", add_listener);
         REGISTER_METHOD_NAME(_js_emitter_prototype, "emit", emit_event);
         REGISTER_METHOD_NAME(_js_emitter_prototype, "removeListener", remove_listener);
+        REGISTER_METHOD_NAME(_js_emitter_prototype, "removeEvent", remove_event);
         REGISTER_METHOD_NAME(_js_emitter_prototype, "removeAllListeners", remove_all_listeners);
         REGISTER_METHOD_NAME(_js_emitter_prototype, "eventNames", get_event_names);
 
