@@ -5,8 +5,6 @@
 static jerry_value_t emitter = 0;
 static jerry_value_t _js_emitter_prototype = 0;
 
-static void remove_event(struct js_emitter *emitter, struct js_event *event);
-
 struct js_listener
 {
     jerry_value_t func;
@@ -24,6 +22,8 @@ struct js_emitter
 {
     struct js_event *events;
 };
+
+static void remove_event(struct js_emitter *emitter, struct js_event *event);
 
 static void free_listener(void *ptr)
 {
