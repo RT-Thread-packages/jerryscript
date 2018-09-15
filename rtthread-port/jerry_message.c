@@ -97,6 +97,7 @@ int js_message_deinit(void)
         js_destroy_emitter(js_message_obj);
         jerry_release_value(js_message_obj);
         js_message_obj = 0;
+        js_remove_callback(js_message_cb);
         js_message_cb = NULL;
     }
 
