@@ -390,6 +390,35 @@ DECLARE_HANDLER(toString)
     return jerry_create_undefined();
 }
 
+DECLARE_HANDLER(jsonParse)
+{
+    int start, end;
+    int optcount = args_cnt;
+
+    js_buffer_t *buf = jerry_buffer_find(this_value);
+    if (!buf) return jerry_create_undefined();
+
+    if (args_cnt > 0)
+        start = jerry_get_number_value(args[0]);
+    else
+        start = 0;
+
+    if (args_cnt > 1)
+        end = jerry_get_number_value(args[1]);
+    else
+        end = buf->bufsize;
+
+    if (end - start > 0)
+    {
+        jerry_char_t *str = (jerry_char_t *)buf->buffer;
+
+        str += start;
+        return jerry_json_parse(str, end - start);
+    }
+    
+    return jerry_create_undefined();
+}
+
 DECLARE_HANDLER(concat)
 {
     if (args_cnt == 1)
@@ -735,6 +764,7 @@ int buffer_encoding_type(const char* encoding)
 }
 
 /*
+ * Buffer(object);
  * Buffer(number);
  * Buffer(array);
  * Buffer(string, encoding[opt]);
@@ -754,7 +784,28 @@ DECLARE_HANDLER(Buffer)
         }
     }
 
-    if (jerry_value_is_number(args[0]))
+    if (jerry_value_is_object(args[0]))
+    {
+        jerry_value_t stringified = jerry_json_stringfy((jerry_value_t)(args[0]));
+        if (!jerry_value_is_error(stringified))
+        {
+            char *json_string = js_value_to_string(stringified);
+            if (json_string)
+            {
+                js_buffer_t *buf;
+                jerry_value_t new_buf = jerry_buffer_create(strlen(json_string), &buf);
+                if (buf)
+                {
+                    memcpy(buf->buffer, json_string, strlen(json_string));
+                }
+                free(json_string);
+
+                return new_buf;
+            }
+            jerry_release_value(stringified);
+        }
+    }
+    else if (jerry_value_is_number(args[0]))
     {
         double dnum = jerry_get_number_value(args[0]);
         uint32_t unum;
@@ -879,6 +930,7 @@ int js_buffer_init(void)
     REGISTER_METHOD(jerry_buffer_prototype, copy);
     REGISTER_METHOD(jerry_buffer_prototype, fill);
     REGISTER_METHOD(jerry_buffer_prototype, toString);
+    REGISTER_METHOD(jerry_buffer_prototype, jsonParse);
     REGISTER_METHOD(jerry_buffer_prototype, write);
     REGISTER_METHOD(jerry_buffer_prototype, concat);
 

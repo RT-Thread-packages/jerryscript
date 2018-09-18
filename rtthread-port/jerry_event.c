@@ -367,7 +367,7 @@ DECLARE_HANDLER(emit_event)
 {
     rt_bool_t ret = RT_FALSE;
 
-    if (args_cnt > 1)
+    if (args_cnt >= 1)
     {
         char *name = js_value_to_string(args[0]);
         if (name)
