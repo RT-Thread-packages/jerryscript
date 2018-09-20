@@ -786,7 +786,7 @@ DECLARE_HANDLER(Buffer)
 
     if (jerry_value_is_object(args[0]))
     {
-        jerry_value_t stringified = jerry_json_stringfy((jerry_value_t)(args[0]));
+        jerry_value_t stringified = jerry_json_stringfy(args[0]);
         if (!jerry_value_is_error(stringified))
         {
             char *json_string = js_value_to_string(stringified);
@@ -799,11 +799,11 @@ DECLARE_HANDLER(Buffer)
                     memcpy(buf->buffer, json_string, strlen(json_string));
                 }
                 free(json_string);
-
+                jerry_release_value(stringified);
                 return new_buf;
             }
-            jerry_release_value(stringified);
         }
+        jerry_release_value(stringified);
     }
     else if (jerry_value_is_number(args[0]))
     {

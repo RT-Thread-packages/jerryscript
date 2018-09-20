@@ -143,27 +143,32 @@ double jerry_port_get_current_time (void)
  * Pointer to the current instance.
  * Note that it is a global variable, and is not a thread safe implementation.
  */
-static jerry_instance_t *current_instance_p = NULL;
+static jerry_context_t *jerry_default_context = NULL;
 
 /**
- * Set the current_instance_p as the passed pointer.
+ * Set the jerry_default_context as the passed pointer.
  */
 void
-jerry_port_default_set_instance (jerry_instance_t *instance_p) /**< points to the created instance */
+jerry_port_set_default_context(jerry_context_t *context)
 {
-    current_instance_p = instance_p;
-} /* jerry_port_default_set_instance */
+    jerry_default_context = context;
+}
 
 /**
- * Get the current instance.
+ * Get the current context of the engine. Each port should provide its own
+ * implementation of this interface.
  *
- * @return the pointer to the current instance
+ * Note:
+ *      This port function is called by jerry-core when
+ *      JERRY_ENABLE_EXTERNAL_CONTEXT is defined. Otherwise this function is not
+ *      used.
+ *
+ * @return the pointer to the engine context.
  */
-jerry_instance_t *
-jerry_port_get_current_instance (void)
+struct jerry_context_t *jerry_port_get_current_context(void)
 {
-    return current_instance_p;
-} /* jerry_port_get_current_instance */
+    return jerry_default_context;
+}
 
 void jerry_port_sleep(uint32_t sleep_time)
 {

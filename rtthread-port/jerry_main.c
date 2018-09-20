@@ -12,11 +12,11 @@
 #define malloc	rt_malloc
 #define free	rt_free
 
-extern void jerry_port_default_set_instance(jerry_instance_t *instance_p);
+extern void jerry_port_set_default_context(jerry_context_t *context);
 
 static rt_mq_t _js_mq = NULL;
 
-static void *instance_alloc(size_t size, void *cb_data_p)
+static void *context_alloc(size_t size, void *cb_data_p)
 {
     return rt_calloc(1, size);
 }
@@ -56,7 +56,7 @@ static void jerry_thread_entry(void* parameter)
     if (length > 0)
     {
         /* JERRY_ENABLE_EXTERNAL_CONTEXT */
-        jerry_port_default_set_instance(jerry_create_instance(32 * 1024, instance_alloc, NULL));
+        jerry_port_set_default_context(jerry_create_context(32 * 1024, context_alloc, NULL));
 
         /* Initialize engine */
         jerry_init(JERRY_INIT_EMPTY);
@@ -138,10 +138,8 @@ static void jerry_thread_entry(void* parameter)
         /* Cleanup engine */
         jerry_cleanup();
 
-        rt_free((void *)jerry_port_get_current_instance());
+        rt_free((void *)jerry_port_get_current_context());
     }
-
-    return 0;
 }
 
 int jerry_main(int argc, char** argv)
