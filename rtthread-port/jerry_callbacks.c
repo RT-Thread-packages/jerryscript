@@ -27,6 +27,9 @@ static void remove_callback(struct js_callback *callback)
 {
     struct js_callback *_callback_free, *_callback = _js_callback;
 
+    if (_js_callback == NULL)
+        return;
+
     if (_js_callback == callback)
     {
         _js_callback = _js_callback->next;
@@ -52,7 +55,7 @@ static rt_bool_t has_callback(struct js_callback *callback)
 {
     struct js_callback *_callback = _js_callback;
 
-    if (callback == NULL)
+    if (callback == NULL || _js_callback == NULL)
     {
         return RT_FALSE;
     }
@@ -147,7 +150,13 @@ rt_bool_t js_send_callback(struct js_callback *callback, const void *args, uint3
     return ret;
 }
 
-void js_mq_func_set(js_mq_func signal)
+void js_mq_func_init(js_mq_func signal)
 {
     _js_mq_func = signal;
+}
+
+void js_mq_func_deinit(void)
+{
+    _js_mq_func = NULL;
+    js_remove_all_callbacks();
 }
