@@ -20,6 +20,10 @@
 #include "jerryscript-port.h"
 #include "jerryscript-core.h"
 
+#ifdef JMEM_STATS
+extern void jmem_heap_stats_print (void);
+#endif
+
 /**
  * Signal the port that jerry experienced a fatal failure from which it cannot
  * recover.
@@ -37,6 +41,7 @@ void jerry_port_fatal(jerry_fatal_code_t code)
     switch (code)
     {
     case ERR_OUT_OF_MEMORY:
+        jmem_heap_stats_print();
         rt_kprintf(" ERR_OUT_OF_MEMORY ");
         break;
     case ERR_SYSCALL:
@@ -87,11 +92,11 @@ void jerry_port_log (jerry_log_level_t level, const char *format, ...)
      * large excluding the terminating null byte. If the output string
      * would be larger than the rt_log_buf, we have to adjust the output
      * length. */
-    length = rt_vsnprintf(rt_log_buf, sizeof(rt_log_buf) - 1, format, args);
-    if (length > RT_CONSOLEBUF_SIZE - 1)
-        length = RT_CONSOLEBUF_SIZE - 1;
+    length = vsnprintf(rt_log_buf, sizeof(rt_log_buf) - 1, format, args);
+    if (length > RT_JS_CONSOLEBUF_SIZE - 1)
+        length = RT_JS_CONSOLEBUF_SIZE - 1;
 #ifdef RT_USING_DEVICE
-    rt_kprintf("%s", rt_log_buf);
+    printf("%s", rt_log_buf);
 #else
     rt_hw_console_output(rt_log_buf);
 #endif
@@ -160,8 +165,17 @@ jerry_port_get_current_instance (void)
     return current_instance_p;
 } /* jerry_port_get_current_instance */
 
-
 void jerry_port_sleep(uint32_t sleep_time)
 {
     rt_thread_delay(rt_tick_from_millisecond(sleep_time));
 }
+
+#ifdef JMEM_STATS
+
+void jmem_heap(void)
+{
+    jmem_heap_stats_print();
+}
+MSH_CMD_EXPORT(jmem_heap, jerry mem heap stats print);
+
+#endif

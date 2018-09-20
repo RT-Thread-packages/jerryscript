@@ -105,4 +105,6 @@
  */
 #define JERRY_ENABLE_EXTERNAL_CONTEXT
 
+#include <rtconfig.h>
+
 #endif /* !CONFIG_H */
