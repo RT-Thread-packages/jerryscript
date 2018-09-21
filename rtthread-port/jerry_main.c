@@ -16,6 +16,8 @@ extern void jerry_port_set_default_context(jerry_context_t *context);
 
 static rt_mq_t _js_mq = NULL;
 
+#define JERRY_EXIT  1
+
 static void *context_alloc(size_t size, void *cb_data_p)
 {
     return rt_calloc(1, size);
@@ -27,7 +29,7 @@ rt_bool_t js_mq_send(void *parameter)
 
     if (_js_mq)
     {
-        ret = rt_mq_send(_js_mq, parameter, sizeof(void *));
+        ret = rt_mq_send(_js_mq, (void *)&parameter, sizeof(void *));
     }
 
     if (ret == RT_EOK)
@@ -38,6 +40,25 @@ rt_bool_t js_mq_send(void *parameter)
     {
         return RT_FALSE;
     }
+}
+
+static void _jerry_exit(void)
+{
+    void *exit = (void *)JERRY_EXIT;
+
+    js_mq_send(exit);
+}
+MSH_CMD_EXPORT_ALIAS(_jerry_exit, jerry_exit, jerryScript Demo exit);
+
+jerry_value_t
+jerry_exit(const jerry_value_t func_obj_val, /**< function object */
+           const jerry_value_t this_p, /**< this arg */
+           const jerry_value_t args_p[], /**< function arguments */
+           const jerry_length_t args_cnt) /**< number of function arguments */
+{
+    _jerry_exit();
+
+    return jerry_create_undefined();
 }
 
 static void jerry_thread_entry(void* parameter)
@@ -63,6 +84,7 @@ static void jerry_thread_entry(void* parameter)
 
         /* Register 'print' function from the extensions */
         jerryx_handler_register_global((const jerry_char_t *)"print", jerryx_handler_print);
+        jerryx_handler_register_global((const jerry_char_t *)"exit", jerry_exit);
 
         js_util_init();
 
@@ -95,14 +117,7 @@ static void jerry_thread_entry(void* parameter)
                 jerry_value_t ret = jerry_run(parsed_code);
                 if (jerry_value_is_error(ret))
                 {
-                    jerry_value_t err_str_val = jerry_value_to_string(ret);
-                    char *err_string = js_value_to_string(err_str_val);
-                    if (err_string)
-                    {
-                        printf("jerry run err : %s\n", err_string);
-                        free(err_string);
-                    }
-                    jerry_release_value(err_str_val);
+                    printf("jerry run err!!!\n");
                 }
                 else
                 {
@@ -112,7 +127,12 @@ static void jerry_thread_entry(void* parameter)
 
                         if (rt_mq_recv(_js_mq, &buffer, sizeof(void *), RT_WAITING_FOREVER) == RT_EOK)
                         {
-                            if (buffer)
+                            if ((int)(buffer) == JERRY_EXIT)
+                            {
+                                printf("jerry exit!!!\n");
+                                break;
+                            }
+                            else if (buffer)
                             {
                                 struct js_mq_callback *jmc = (struct js_mq_callback *)buffer;
                                 js_call_callback(jmc->callback, jmc->args, jmc->size);
