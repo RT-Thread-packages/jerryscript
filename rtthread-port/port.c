@@ -50,6 +50,9 @@ void jerry_port_fatal(jerry_fatal_code_t code)
     case ERR_REF_COUNT_LIMIT:
         rt_kprintf(" ERR_REF_COUNT_LIMIT ");
         break;
+    case ERR_DISABLED_BYTE_CODE:
+        rt_kprintf(" ERR_DISABLED_BYTE_CODE ");
+        break;
     case ERR_FAILED_INTERNAL_ASSERTION:
         rt_kprintf(" ERR_FAILED_INTERNAL_ASSERTION ");
         break;
