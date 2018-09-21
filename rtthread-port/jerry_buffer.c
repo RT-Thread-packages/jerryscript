@@ -393,7 +393,6 @@ DECLARE_HANDLER(toString)
 DECLARE_HANDLER(jsonParse)
 {
     int start, end;
-    int optcount = args_cnt;
 
     js_buffer_t *buf = jerry_buffer_find(this_value);
     if (!buf) return jerry_create_undefined();
@@ -410,10 +409,19 @@ DECLARE_HANDLER(jsonParse)
 
     if (end - start > 0)
     {
+        jerry_value_t parsed_json;
         jerry_char_t *str = (jerry_char_t *)buf->buffer;
 
         str += start;
-        return jerry_json_parse(str, end - start);
+
+        parsed_json = jerry_json_parse(str, end - start);
+        if (jerry_value_is_error(parsed_json))
+        {
+            jerry_release_value(parsed_json);
+            return jerry_create_undefined();
+        }
+        else
+            return parsed_json;
     }
     
     return jerry_create_undefined();
@@ -764,10 +772,10 @@ int buffer_encoding_type(const char* encoding)
 }
 
 /*
- * Buffer(object);
  * Buffer(number);
- * Buffer(array);
  * Buffer(string, encoding[opt]);
+ * Buffer(array);
+ * Buffer(object);
  */
 DECLARE_HANDLER(Buffer)
 {
@@ -784,28 +792,7 @@ DECLARE_HANDLER(Buffer)
         }
     }
 
-    if (jerry_value_is_object(args[0]))
-    {
-        jerry_value_t stringified = jerry_json_stringfy(args[0]);
-        if (!jerry_value_is_error(stringified))
-        {
-            char *json_string = js_value_to_string(stringified);
-            if (json_string)
-            {
-                js_buffer_t *buf;
-                jerry_value_t new_buf = jerry_buffer_create(strlen(json_string), &buf);
-                if (buf)
-                {
-                    memcpy(buf->buffer, json_string, strlen(json_string));
-                }
-                free(json_string);
-                jerry_release_value(stringified);
-                return new_buf;
-            }
-        }
-        jerry_release_value(stringified);
-    }
-    else if (jerry_value_is_number(args[0]))
+    if (jerry_value_is_number(args[0]))
     {
         double dnum = jerry_get_number_value(args[0]);
         uint32_t unum;
@@ -826,6 +813,48 @@ DECLARE_HANDLER(Buffer)
 
         // treat a number argument as a length
         return jerry_buffer_create(unum, NULL);
+    }
+    else if (jerry_value_is_string(args[0]))
+    {
+        uint8_t *data = NULL;
+        char *str = js_value_to_string(args[0]);
+        if (!str)
+        {
+            return jerry_create_undefined();
+        }
+
+        js_buffer_t *buf;
+        jerry_size_t size = strlen(str);
+
+        if (encoding_type == ENCODING_HEX)
+        {
+            data = malloc(size / 2);
+            if (data)
+            {
+                int index;
+                for (index = 0; index < size / 2; index++)
+                {
+                    data[index] = hex2int(&str[index * 2]);
+                }
+            }
+
+            size = size / 2;
+        }
+        else
+        {
+            data = (uint8_t *)str;
+        }
+
+        jerry_value_t new_buf = jerry_buffer_create(size, &buf);
+        if (buf)
+        {
+            memcpy(buf->buffer, data, size);
+        }
+
+        if ((char*)data != str) free(data);
+        free(str);
+
+        return new_buf;
     }
     else if (jerry_value_is_array(args[0]))
     {
@@ -853,47 +882,26 @@ DECLARE_HANDLER(Buffer)
         }
         return new_buf;
     }
-    else if (jerry_value_is_string(args[0]))
+    else if (jerry_value_is_object(args[0]))
     {
-        uint8_t *data = NULL;
-        char *str = js_value_to_string(args[0]);
-        if (!str)
+        jerry_value_t stringified = jerry_json_stringfy(args[0]);
+        if (!jerry_value_is_error(stringified))
         {
-            return jerry_create_undefined();
-        }
-
-        js_buffer_t *buf;
-        jerry_size_t size = strlen(str);
-
-        if (encoding_type == ENCODING_HEX)
-        {
-            data = malloc(size/2);
-            if (data)
+            char *json_string = js_value_to_string(stringified);
+            if (json_string)
             {
-                int index;
-                for (index = 0; index < size/2; index ++)
+                js_buffer_t *buf;
+                jerry_value_t new_buf = jerry_buffer_create(strlen(json_string), &buf);
+                if (buf)
                 {
-                    data[index] = hex2int(&str[index * 2]);
+                    memcpy(buf->buffer, json_string, strlen(json_string));
                 }
+                free(json_string);
+                jerry_release_value(stringified);
+                return new_buf;
             }
-
-            size = size / 2;
         }
-        else
-        {
-            data = (uint8_t *)str;
-        }
-
-        jerry_value_t new_buf = jerry_buffer_create(size, &buf);
-        if (buf)
-        {
-            memcpy(buf->buffer, data, size);
-        }
-
-        if ((char*)data != str) free(data);
-        free(str);
-
-        return new_buf;
+        jerry_release_value(stringified);
     }
 
     return jerry_create_undefined();
