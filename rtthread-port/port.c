@@ -37,6 +37,8 @@ extern void jmem_heap_stats_print (void);
  */
 void jerry_port_fatal(jerry_fatal_code_t code)
 {
+    extern void jmem_heap(void);
+
     rt_kprintf("jerryScritp fatal [");
     switch (code)
     {
@@ -58,6 +60,7 @@ void jerry_port_fatal(jerry_fatal_code_t code)
         break;
     };
     rt_kprintf("]...\n");
+    jmem_heap();
     rt_hw_interrupt_disable();
     while (1);
 }
