@@ -37,13 +37,10 @@ extern void jmem_heap_stats_print (void);
  */
 void jerry_port_fatal(jerry_fatal_code_t code)
 {
-    extern void jmem_heap(void);
-
     rt_kprintf("jerryScritp fatal [");
     switch (code)
     {
     case ERR_OUT_OF_MEMORY:
-        jmem_heap_stats_print();
         rt_kprintf(" ERR_OUT_OF_MEMORY ");
         break;
     case ERR_SYSCALL:
@@ -60,7 +57,11 @@ void jerry_port_fatal(jerry_fatal_code_t code)
         break;
     };
     rt_kprintf("]...\n");
-    jmem_heap();
+    
+#ifdef JMEM_STATS
+    jmem_heap_stats_print();
+#endif
+
     rt_hw_interrupt_disable();
     while (1);
 }
