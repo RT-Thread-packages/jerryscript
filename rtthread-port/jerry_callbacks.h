@@ -16,7 +16,6 @@ typedef rt_bool_t(*js_mq_func)(void *args);
 struct js_callback
 {
     js_callback_func function;
-    uint8_t flags;
     struct js_callback *next;
 };
 

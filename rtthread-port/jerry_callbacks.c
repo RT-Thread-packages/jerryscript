@@ -25,25 +25,24 @@ static void append_callback(struct js_callback *callback)
 
 static void remove_callback(struct js_callback *callback)
 {
-    struct js_callback *_callback_free, *_callback = _js_callback;
+    struct js_callback *_callback = _js_callback;
 
     if (_js_callback == NULL)
         return;
-
+    
     if (_js_callback == callback)
     {
         _js_callback = _js_callback->next;
-        rt_free(_callback);
+        rt_free(callback);
         return;
     }
 
     while (_callback->next != NULL)
     {
-        if (_callback == callback)
+        if (_callback->next == callback)
         {
-            _callback_free = _callback;
-            _callback = _callback->next;
-            rt_free(_callback_free);
+            _callback->next = callback->next;
+            rt_free(callback);
             break;
         }
 
@@ -60,7 +59,7 @@ static rt_bool_t has_callback(struct js_callback *callback)
         return RT_FALSE;
     }
 
-    while (_callback != NULL)
+    do
     {
         if (_callback == callback)
         {
@@ -69,6 +68,7 @@ static rt_bool_t has_callback(struct js_callback *callback)
 
         _callback = _callback->next;
     }
+    while (_callback != NULL);
 
     return RT_FALSE;
 }
@@ -96,12 +96,12 @@ void js_remove_callback(struct js_callback *callback)
 
 void js_remove_all_callbacks(void)
 {
-    struct js_callback *_callback_free, *_callback = _js_callback;
+    struct js_callback *_callback_free;
 
-    while (_callback != NULL)
+    while (_js_callback != NULL)
     {
-        _callback_free = _callback;
-        _callback = _callback->next;
+        _callback_free = _js_callback;
+        _js_callback = _js_callback->next;
         rt_free(_callback_free);
     }
 
@@ -146,7 +146,7 @@ rt_bool_t js_send_callback(struct js_callback *callback, const void *args, uint3
             rt_free(jmc);
         }
     }
-    
+
     return ret;
 }
 
