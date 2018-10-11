@@ -8,10 +8,10 @@
 
 DECLARE_HANDLER(dir)
 {
-    size_t index;
-    for (index = 0; index < args_cnt; index ++)
+    for (int index = 0; index < args_cnt; index ++)
     {
         js_value_dump(args[index]);
+        printf("\n");
     }
 
     return jerry_create_undefined();

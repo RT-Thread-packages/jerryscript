@@ -113,7 +113,7 @@ bool object_dump_foreach(const jerry_value_t property_name,
     if (*first_property) *first_property = 0;
     else
     {
-        printf(",");
+        printf(", ");
     }
 
     if (jerry_value_is_string(property_name))
@@ -184,17 +184,17 @@ void js_value_dump(jerry_value_t value)
         {
             jerry_value_t item = jerry_get_property_by_index(value, index);
             js_value_dump(item);
-            printf(" , ");
+            printf(", ");
             jerry_release_value(item);
         }
-        printf("]\n");
+        printf("]");
     }
     else if (jerry_value_is_object(value))
     {
         int first_property = 1;
         printf("{");
         jerry_foreach_object_property(value, object_dump_foreach, &first_property);
-        printf("}\n");
+        printf("}");
     }
     else
     {
