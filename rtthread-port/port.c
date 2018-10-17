@@ -20,10 +20,6 @@
 #include "jerryscript-port.h"
 #include "jerryscript-core.h"
 
-#ifdef JMEM_STATS
-extern void jmem_heap_stats_print (void);
-#endif
-
 /**
  * Signal the port that jerry experienced a fatal failure from which it cannot
  * recover.
@@ -35,11 +31,8 @@ extern void jmem_heap_stats_print (void);
  *
  * Example: a libc-based port may implement this with exit() or abort(), or both.
  */
-
-
 void jerry_port_fatal(jerry_fatal_code_t code)
 {
-    extern void jmem_heap(void);
     rt_kprintf("jerryScritp fatal [");
     switch (code)
     {
@@ -52,23 +45,14 @@ void jerry_port_fatal(jerry_fatal_code_t code)
     case ERR_REF_COUNT_LIMIT:
         rt_kprintf(" ERR_REF_COUNT_LIMIT ");
         break;
-    case ERR_DISABLED_BYTE_CODE:
-        rt_kprintf(" ERR_DISABLED_BYTE_CODE ");
-        break;
     case ERR_FAILED_INTERNAL_ASSERTION:
         rt_kprintf(" ERR_FAILED_INTERNAL_ASSERTION ");
         break;
     };
     rt_kprintf("]...\n");
-    
-#ifdef JMEM_STATS
-    jmem_heap_stats_print();
-#endif
-
     rt_hw_interrupt_disable();
     while (1);
 }
-
 
 /*
  *  I/O Port API
@@ -103,11 +87,11 @@ void jerry_port_log (jerry_log_level_t level, const char *format, ...)
      * large excluding the terminating null byte. If the output string
      * would be larger than the rt_log_buf, we have to adjust the output
      * length. */
-    length = vsnprintf(rt_log_buf, sizeof(rt_log_buf) - 1, format, args);
-    if (length > RT_JS_CONSOLEBUF_SIZE - 1)
-        length = RT_JS_CONSOLEBUF_SIZE - 1;
+    length = rt_vsnprintf(rt_log_buf, sizeof(rt_log_buf) - 1, format, args);
+    if (length > RT_CONSOLEBUF_SIZE - 1)
+        length = RT_CONSOLEBUF_SIZE - 1;
 #ifdef RT_USING_DEVICE
-    printf("%s", rt_log_buf);
+    rt_kprintf("%s", rt_log_buf);
 #else
     rt_hw_console_output(rt_log_buf);
 #endif
@@ -154,44 +138,30 @@ double jerry_port_get_current_time (void)
  * Pointer to the current instance.
  * Note that it is a global variable, and is not a thread safe implementation.
  */
-static jerry_context_t *jerry_default_context = NULL;
+static jerry_instance_t *current_instance_p = NULL;
 
 /**
- * Set the jerry_default_context as the passed pointer.
+ * Set the current_instance_p as the passed pointer.
  */
 void
-jerry_port_set_default_context(jerry_context_t *context)
+jerry_port_default_set_instance (jerry_instance_t *instance_p) /**< points to the created instance */
 {
-    jerry_default_context = context;
-}
+    current_instance_p = instance_p;
+} /* jerry_port_default_set_instance */
 
 /**
- * Get the current context of the engine. Each port should provide its own
- * implementation of this interface.
+ * Get the current instance.
  *
- * Note:
- *      This port function is called by jerry-core when
- *      JERRY_ENABLE_EXTERNAL_CONTEXT is defined. Otherwise this function is not
- *      used.
- *
- * @return the pointer to the engine context.
+ * @return the pointer to the current instance
  */
-struct jerry_context_t *jerry_port_get_current_context(void)
+jerry_instance_t *
+jerry_port_get_current_instance (void)
 {
-    return jerry_default_context;
-}
+    return current_instance_p;
+} /* jerry_port_get_current_instance */
+
 
 void jerry_port_sleep(uint32_t sleep_time)
 {
     rt_thread_delay(rt_tick_from_millisecond(sleep_time));
 }
-
-#ifdef JMEM_STATS
-
-void jmem_heap(void)
-{
-    jmem_heap_stats_print();
-}
-MSH_CMD_EXPORT(jmem_heap, jerry mem heap stats print);
-
-#endif
