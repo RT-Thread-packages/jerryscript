@@ -77,7 +77,7 @@ static void jerry_thread_entry(void* parameter)
     if (length > 0)
     {
         /* JERRY_ENABLE_EXTERNAL_CONTEXT */
-        jerry_port_set_default_context(jerry_create_context(32 * 1024, context_alloc, NULL));
+        jerry_port_set_default_context(jerry_create_context(PKG_JMEM_HEAP_SIZE * 1024, context_alloc, NULL));
 
         /* Initialize engine */
         jerry_init(JERRY_INIT_EMPTY);
