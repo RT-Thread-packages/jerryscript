@@ -3,7 +3,7 @@
 
 void _js_callback_func_request(const void *args, uint32_t size)
 {
-	struct callback_info* cb_info = (struct callback_info*)args;
+    struct callback_info* cb_info = (struct callback_info*)args;
 
     if(cb_info->return_value != NULL)
         js_emit_event(cb_info->target_value, cb_info->callback_name, &cb_info->return_value, 1);
@@ -22,8 +22,8 @@ void _js_callback_free_request(const void *args, uint32_t size)
 {
     struct read_paramater* rp = (struct read_paramater*)args;
     webclient_close(rp->session);
-	js_remove_callback(rp->request_callback);
-	js_remove_callback(rp->close_callback);
+    js_remove_callback(rp->request_callback);
+    js_remove_callback(rp->close_callback);
     if(rp->isConnected == false)
         jerry_release_value(rp->target_value);
     free(rp);
@@ -61,7 +61,7 @@ void create_return_header_property (struct webclient_session* session,jerry_valu
     for(int i = 0 ; i < session->header->length ; i++)
     {
         if(session->header->buffer[i] == ':'
-            && per_enter_index != enter_index)
+                && per_enter_index != enter_index)
         {
             colon_index = i;
             per_enter_index = enter_index;
@@ -83,30 +83,32 @@ bool get_header(struct webclient_session* session,jerry_value_t header_value)
     if(jerry_value_is_object(header_value))
     {
         char *host=NULL,*user_agent=NULL,*content_type=NULL;
-        
+
         jerry_value_t Host_name = jerry_create_string ((const jerry_char_t *) "Host");
         jerry_value_t Host_value = jerry_get_property (header_value, Host_name);
         if(!jerry_value_is_undefined(Host_value))
             host= js_value_to_string(Host_value);
         jerry_release_value(Host_name);
         jerry_release_value(Host_value);
-        
+
         jerry_value_t User_Agent_name = jerry_create_string ((const jerry_char_t *) "User-Agent");
         jerry_value_t User_Agent_value = jerry_get_property (header_value, User_Agent_name);
         if(!jerry_value_is_undefined(User_Agent_value))
             user_agent = js_value_to_string(User_Agent_value);
         jerry_release_value(User_Agent_name);
         jerry_release_value(User_Agent_value);
-        
+
         jerry_value_t Content_Type_name = jerry_create_string ((const jerry_char_t *) "Content-Type");
         jerry_value_t Content_Type_value = jerry_get_property (header_value, Content_Type_name);
         if(!jerry_value_is_undefined(Content_Type_value))
             content_type = js_value_to_string(Content_Type_value);
         jerry_release_value(Content_Type_name);
         jerry_release_value(Content_Type_value);
-        
+
         return combine_header(session, host, user_agent, content_type);
-    }else{
+    }
+    else
+    {
         return false;
     }
 }
@@ -127,7 +129,7 @@ static void read_request_entry(void* p)
     //create a callback function to free manager and close webClient session
     int ret_read = 0;
     ret_read=webclient_read(rp->session,buffer,READ_MAX_SIZE+1);
-    //If file's size is bigger than buffer's, 
+    //If file's size is bigger than buffer's,
     //give up reading and send a fail callback
     if(ret_read > READ_MAX_SIZE)
     {
@@ -156,13 +158,13 @@ static void read_request_entry(void* p)
         jerry_value_t statusCode_value = jerry_create_number(webclient_resp_status_get(rp->session));
         js_set_property(return_value,"statusCode",statusCode_value);
         jerry_release_value(statusCode_value);
-        
+
         /*** header's data saved as Object ***/
         jerry_value_t header_value = jerry_create_object();
         create_return_header_property(rp->session,header_value);
-        js_set_property(return_value,"header",header_value);        
+        js_set_property(return_value,"header",header_value);
         jerry_release_value(header_value);
-        
+
         //do success callback
         struct callback_info* success_info  =(struct callback_info*)malloc(sizeof(struct callback_info));
         memset(success_info,0,sizeof(struct callback_info));
@@ -170,20 +172,20 @@ static void read_request_entry(void* p)
         success_info->callback_name= rt_strdup("success");
         success_info->return_value = return_value;
         success_info->data_value = data_value;
-		js_send_callback(rp->request_callback, success_info, sizeof(struct callback_info));     
+        js_send_callback(rp->request_callback, success_info, sizeof(struct callback_info));
     }
-    
+
     //do complete callback
     struct callback_info* complete_info  =(struct callback_info*)malloc(sizeof(struct callback_info));;
     complete_info->target_value = rp->target_value;
     complete_info->callback_name = rt_strdup("complete");
     complete_info->return_value = RT_NULL;
     complete_info->data_value = RT_NULL;
-	js_send_callback(rp->request_callback, complete_info, sizeof(struct callback_info));
+    js_send_callback(rp->request_callback, complete_info, sizeof(struct callback_info));
 
     free(buffer);
-	rp->isConnected = true;
-	js_send_callback(rp->close_callback, rp, sizeof(struct read_paramater));
+    rp->isConnected = true;
+    js_send_callback(rp->close_callback, rp, sizeof(struct read_paramater));
 }
 
 
@@ -206,18 +208,18 @@ DECLARE_HANDLER(request)
     if(jerry_value_is_function(fail_func))
         js_add_event_listener(rqObj, "fail", fail_func);
     jerry_release_value(fail_func);
-    
+
     jerry_value_t complete_func = js_get_property(requestObj, "complete");
     if(jerry_value_is_function(complete_func))
         js_add_event_listener(rqObj, "complete", complete_func);
     jerry_release_value(complete_func);
- 
+
     char* url = RT_NULL;
     jerry_value_t js_url = js_get_property(requestObj, "url");
     if (jerry_value_is_string(js_url))
         url = js_value_to_string(js_url);
     jerry_release_value(js_url);
-    
+
     char *data = RT_NULL;
     jerry_value_t js_data = js_get_property(requestObj, "data");
     if(jerry_value_is_object(js_data))
@@ -231,12 +233,12 @@ DECLARE_HANDLER(request)
         data = js_value_to_string(js_data);
     }
     jerry_release_value(js_data);
-    
+
     struct webclient_session *session = webclient_session_create(HEADER_BUFSZ);;
     jerry_value_t js_header = js_get_property(requestObj, "header");
     get_header(session, js_header);
     jerry_release_value(js_header);
-    
+
     int method = WEBCLIENT_GET;
     jerry_value_t method_value = js_get_property(requestObj, "method");  // get/set the value of method
     if(jerry_value_is_string(method_value))
@@ -262,7 +264,7 @@ DECLARE_HANDLER(request)
     {
         response = webclient_post(session,url,data);
     }
-    
+
     free(data);
 
     struct read_paramater* rp = (struct read_paramater*)malloc(sizeof(struct read_paramater));
@@ -271,7 +273,7 @@ DECLARE_HANDLER(request)
     rp->close_callback = close_callback;
     rp->target_value = rqObj;
     rp->session = session;
-    
+
     if(session == RT_NULL || response != 200)
     {
         //do fail callback
@@ -284,30 +286,30 @@ DECLARE_HANDLER(request)
         //do complete callback
         struct callback_info* complete_info =(struct callback_info*)malloc(sizeof(struct callback_info));;
         complete_info->target_value = rqObj;
-        complete_info->callback_name = rt_strdup("complete");        
+        complete_info->callback_name = rt_strdup("complete");
         complete_info->return_value = RT_NULL;
         complete_info->data_value = RT_NULL;
         js_send_callback(request_callback, complete_info, sizeof(struct callback_info));;
         rp->isConnected =false;
         goto __exit;
     }
-    
+
 
     rt_thread_t read_request = rt_thread_create("requestRead", read_request_entry, rp, 1536, 20, 5);
     rt_thread_startup(read_request);
     return jerry_acquire_value(rqObj);
 
-    __exit:
-        js_send_callback(close_callback,rp,sizeof(struct read_paramater));
-        return jerry_create_undefined();
+__exit:
+    js_send_callback(close_callback,rp,sizeof(struct read_paramater));
+    return jerry_create_undefined();
 }
 
 jerry_value_t jerry_request_init()
 {
     jerry_value_t js_requset = jerry_create_object();
-    
+
     REGISTER_METHOD_NAME(js_requset,"request",request);
-    
+
     return jerry_acquire_value(js_requset);
 }
 
