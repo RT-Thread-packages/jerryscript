@@ -345,7 +345,7 @@ DECLARE_HANDLER(toString)
     int start, end;
     int optcount = args_cnt;
 
-    if (args_cnt < 1 || !jerry_value_is_string(args[0])) return jerry_create_undefined();
+    if (args_cnt > 1 && !jerry_value_is_string(args[0])) return jerry_create_undefined();
 
     js_buffer_t *buf = jerry_buffer_find(this_value);
     if (!buf) return jerry_create_undefined();
@@ -356,7 +356,7 @@ DECLARE_HANDLER(toString)
     else end = buf->bufsize;
 
     int size;
-    char *enc;
+    char *enc = NULL;
     const char *encoding = "utf8";
     if (optcount)
     {
