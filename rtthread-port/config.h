@@ -16,6 +16,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "rtconfig.h"
+
 /**
  * Group of builtin-related features that can be disabled together.
  */
@@ -37,8 +39,10 @@
  */
 #ifdef CONFIG_DISABLE_ES2015
 # define CONFIG_DISABLE_ES2015_ARROW_FUNCTION
-# define CONFIG_DISABLE_ES2015_CLASS
 # define CONFIG_DISABLE_ES2015_BUILTIN
+# define CONFIG_DISABLE_ES2015_CLASS
+# define CONFIG_DISABLE_ES2015_MAP_BUILTIN
+# define CONFIG_DISABLE_ES2015_OBJECT_INITIALIZER
 # define CONFIG_DISABLE_ES2015_PROMISE_BUILTIN
 # define CONFIG_DISABLE_ES2015_TEMPLATE_STRINGS
 # define CONFIG_DISABLE_ES2015_TYPEDARRAY_BUILTIN
@@ -48,7 +52,8 @@
  * Size of heap
  */
 #ifndef CONFIG_MEM_HEAP_AREA_SIZE
-# define CONFIG_MEM_HEAP_AREA_SIZE (512 * 1024)
+# define CONFIG_MEM_HEAP_AREA_SIZE PKG_JMEM_HEAP_SIZE
+//# define CONFIG_MEM_HEAP_AREA_SIZE (512 * 1024)
 #endif /* !CONFIG_MEM_HEAP_AREA_SIZE */
 
 /**
@@ -99,10 +104,5 @@
  *                1.0 / CONFIG_ECMA_GC_NEW_OBJECTS_SHARE_TO_START_GC
  */
 #define CONFIG_ECMA_GC_NEW_OBJECTS_SHARE_TO_START_GC (16)
-
- /**
- * Jerry instance for external context.
- */
-#define JERRY_ENABLE_EXTERNAL_CONTEXT
 
 #endif /* !CONFIG_H */
