@@ -20,7 +20,7 @@ static rt_mq_t _js_mq = NULL;
 
 static void *context_alloc(size_t size, void *cb_data_p)
 {
-    return rt_calloc(1, size);
+    return rt_malloc_align(size, 32);
 }
 
 rt_bool_t js_mq_send(void *parameter)
@@ -158,7 +158,7 @@ static void jerry_thread_entry(void* parameter)
         /* Cleanup engine */
         jerry_cleanup();
 
-        rt_free((void *)jerry_port_get_current_context());
+        rt_free_align((void *)jerry_port_get_current_context());
     }
 }
 
