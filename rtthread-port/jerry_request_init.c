@@ -6,9 +6,13 @@ void request_callback_func(const void *args, uint32_t size)
     request_cbinfo_t *cb_info = (request_cbinfo_t *)args;
 
     if (cb_info->return_value != RT_NULL)
+    {
         js_emit_event(cb_info->target_value, cb_info->callback_name, &cb_info->return_value, 1);
+    }
     else
+    {
         js_emit_event(cb_info->target_value, cb_info->callback_name, RT_NULL, 0);
+    }
     if (cb_info->return_value != RT_NULL)
     {
         jerry_release_value(cb_info->return_value);
@@ -18,15 +22,17 @@ void request_callback_func(const void *args, uint32_t size)
         jerry_release_value(cb_info->data_value);
     }
 
-    free(cb_info->callback_name);
+	free(cb_info->callback_name);
     free(cb_info);
 }
 
 void request_callback_free(const void *args, uint32_t size)
 {
-    request_tdinfo_t *rp = (request_tdinfo_t*)args;
+    request_tdinfo_t *rp = (request_tdinfo_t *)args;
     if (rp->session)
+    {
         webclient_close(rp->session);
+    }
     js_remove_callback(rp->request_callback);
     js_remove_callback(rp->close_callback);
     js_destroy_emitter(rp->target_value);
@@ -92,17 +98,23 @@ bool request_get_header(struct webclient_session *session, jerry_value_t header_
 
         jerry_value_t Host_value = js_get_property(header_value, "Host");
         if (!jerry_value_is_undefined(Host_value))
+        {
             host = js_value_to_string(Host_value);
+        }
         jerry_release_value(Host_value);
 
         jerry_value_t User_Agent_value = js_get_property(header_value, "User-Agent");
         if (!jerry_value_is_undefined(User_Agent_value))
+        {
             user_agent = js_value_to_string(User_Agent_value);
+        }
         jerry_release_value(User_Agent_value);
 
         jerry_value_t Content_Type_value = js_get_property(header_value, "Content-Type");
         if (!jerry_value_is_undefined(Content_Type_value))
+        {
             content_type = js_value_to_string(Content_Type_value);
+        }
         jerry_release_value(Content_Type_value);
 
         return request_combine_header(session, host, user_agent, content_type);
@@ -194,30 +206,38 @@ void request_read_entry(void *p)
     free(rp);
 }
 
-void requeset_add_event_listener(jerry_value_t js_target,jerry_value_t requestObj)
+void requeset_add_event_listener(jerry_value_t js_target, jerry_value_t requestObj)
 {
     jerry_value_t success_func = js_get_property(requestObj, "success");
     if (jerry_value_is_function(success_func))
+    {
         js_add_event_listener(js_target, "success", success_func);
+    }
     jerry_release_value(success_func);
 
     jerry_value_t fail_func = js_get_property(requestObj, "fail");
     if (jerry_value_is_function(fail_func))
+    {
         js_add_event_listener(js_target, "fail", fail_func);
+    }
     jerry_release_value(fail_func);
 
     jerry_value_t complete_func = js_get_property(requestObj, "complete");
     if (jerry_value_is_function(complete_func))
+    {
         js_add_event_listener(js_target, "complete", complete_func);
+    }
     jerry_release_value(complete_func);
 }
 
-void reqeuset_get_config(request_config_t *config,jerry_value_t requestObj)
+void reqeuset_get_config(request_config_t *config, jerry_value_t requestObj)
 {
     /*get url*/
     jerry_value_t js_url = js_get_property(requestObj, "url");
     if (jerry_value_is_string(js_url))
+    {
         config->url = js_value_to_string(js_url);
+    }
     jerry_release_value(js_url);
 
     /*get data*/
@@ -260,14 +280,17 @@ void reqeuset_get_config(request_config_t *config,jerry_value_t requestObj)
 DECLARE_HANDLER(request)
 {
     if (args_cnt != 1 || !jerry_value_is_object(args[0]))
+    {
         return jerry_create_undefined();
+    }
+
     jerry_value_t requestObj = args[0];
     jerry_value_t rqObj = jerry_create_object();
     js_make_emitter(rqObj, jerry_create_undefined());
     struct js_callback *request_callback = js_add_callback(request_callback_func);
     struct js_callback *close_callback = js_add_callback(request_callback_free);
 
-    requeset_add_event_listener(rqObj,requestObj);
+    requeset_add_event_listener(rqObj, requestObj);
 
     request_config_t config;
     config.method = WEBCLIENT_GET;
@@ -275,8 +298,8 @@ DECLARE_HANDLER(request)
     config.data = RT_NULL;
     config.response = 0;
     config.session = RT_NULL;
-    
-    reqeuset_get_config(&config,requestObj);
+
+    reqeuset_get_config(&config, requestObj);
 
     if (config.session != RT_NULL && config.method == WEBCLIENT_GET)
     {
@@ -288,7 +311,7 @@ DECLARE_HANDLER(request)
         webclient_header_fields_add(config.session, "Content-Type: application/octet-stream\r\n");
         config.response = webclient_post(config.session, config.url, config.data);
     }
-    
+
     free(config.data);
     free(config.url);
 
@@ -310,6 +333,7 @@ DECLARE_HANDLER(request)
 
         js_send_callback(request_callback, fail_info, sizeof(request_cbinfo_t));
         free(fail_info);
+
         //do complete callback
         request_cbinfo_t *complete_info = (request_cbinfo_t *)malloc(sizeof(request_cbinfo_t));
         complete_info->target_value = rqObj;
@@ -344,7 +368,7 @@ static jerry_value_t _jerry_request_init()
     jerry_value_t js_requset = jerry_create_object();
 
     REGISTER_METHOD_NAME(js_requset, "request", request);
-    
+
     return jerry_acquire_value(js_requset);
 }
 
