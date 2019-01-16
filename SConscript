@@ -3,7 +3,7 @@ from building import *
 
 # get current directory
 cwd = GetCurrentDir()
-jerry_core_dir = cwd + '/jerryscript/jerry-core'
+jerry_core_dir = 'jerryscript/jerry-core'
 
 SOURCE_CORE                 = Glob(jerry_core_dir + '/*.c')
 SOURCE_CORE_API             = Glob(jerry_core_dir + '/api/*.c')
@@ -20,7 +20,7 @@ SOURCE_CORE_PARSER_JS       = Glob(jerry_core_dir + '/parser/js/*.c')
 SOURCE_CORE_PARSER_REGEXP   = Glob(jerry_core_dir + '/parser/regexp/*.c')
 SOURCE_CORE_VM              = Glob(jerry_core_dir + '/vm/*.c')
 
-SOURCE_CORE_PORT            = Glob(cwd + '/rtthread-port/*.c')
+SOURCE_CORE_PORT            = Glob('rtthread-port/*.c')
 
 jerry_core = SOURCE_CORE
 jerry_core += SOURCE_CORE_API
@@ -38,7 +38,7 @@ jerry_core += SOURCE_CORE_PARSER_REGEXP
 jerry_core += SOURCE_CORE_PORT
 jerry_core += SOURCE_CORE_VM
 
-jerry_ext_dir = cwd + '/jerryscript/jerry-ext'
+jerry_ext_dir = 'jerryscript/jerry-ext'
 
 SOURCE_EXT_ARG              = Glob(jerry_ext_dir + '/arg/*.c')
 SOURCE_EXT_HANDLER          = Glob(jerry_ext_dir + '/handler/*.c')
@@ -48,6 +48,8 @@ SOURCE_EXT_MODULE           = Glob(jerry_ext_dir + '/module/*.c')
 jerry_ext = SOURCE_EXT_ARG + SOURCE_EXT_HANDLER + SOURCE_EXT_INCLUDE + SOURCE_EXT_MODULE
 
 src = jerry_core + jerry_ext
+
+jerry_core_dir = cwd + '/jerryscript/jerry-core'
 
 path = [cwd]
 path += [cwd + '/rtthread-port']
