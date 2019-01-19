@@ -49,6 +49,7 @@ static rt_int32_t pipe_deinit(struct socket_info *thiz)
     rt_pipe_delete((const char *)thiz->pipe);
     return 0;
 }
+
 /* manage the socket_list */
 int get_socket_list_count(socket_list_t **l)
 {
@@ -98,7 +99,6 @@ void socket_list_remove(socket_list_t **n)
 {
     if ((*n)->next == (*n))
     {
-        //jerry_release_value((*n)->js_socket);
         free((*n));
         (*n) = RT_NULL;
     }
@@ -107,7 +107,6 @@ void socket_list_remove(socket_list_t **n)
         (*n)->next->prev = (*n)->prev;
         (*n)->prev->next = (*n)->next;
         (*n)->next = (*n)->prev = (*n);
-        //jerry_release_value((*n)->js_socket);
         free(*n);
         (*n) = RT_NULL;
     }
@@ -207,7 +206,6 @@ void net_socket_callback_func(const void *args, uint32_t size)
     jerry_value_t ret = jerry_call_function(cb_info->js_run, cb_info->js_this, (jerry_value_t *)cb_info->args, cb_info->args_cnt);
 
     jerry_release_value(ret);
-
     free(cb_info);
 }
 
@@ -350,6 +348,7 @@ void net_server_callback_free(const void *args, uint32_t size)
 
     free(close_info);
 }
+
 void net_server_free_callback(void *native_p)
 {
     net_serverInfo_t *js_server_info = (net_serverInfo_t *)native_p;
@@ -378,7 +377,6 @@ void net_server_free_callback(void *native_p)
         js_server_info->server_sem = RT_NULL;
         js_destroy_emitter(js_server_info->this_value);
     }
-
     free(js_server_info);
 }
 
@@ -750,7 +748,7 @@ DECLARE_HANDLER(socket_connect)
         if (ret >= 0)
         {
 __isConnected:
-            if (net_socket_updateProperty(this_value))
+            if(net_socket_updateProperty(this_value))
             {
                 net_socket_startRead(this_value);
             }
@@ -901,7 +899,6 @@ DECLARE_HANDLER(socket_write)
     }
 
     /*get socket_info*/
-    //GET_SOCKET_INFO(this_value);
     struct socket_info *js_socket_info = RT_NULL;
     get_net_info((void **)&js_socket_info, this_value);
 
@@ -945,7 +942,6 @@ jerry_value_t create_js_socket()
     js_socket_info->js_server = RT_NULL;
     js_socket_info->this_value = js_socket;
     /*set method*/
-    //js_make_emitter(js_socket, jerry_create_undefined());
     REGISTER_METHOD_NAME(js_socket, "connect", socket_connect);
     REGISTER_METHOD_NAME(js_socket, "destory", socket_destory);
     REGISTER_METHOD_NAME(js_socket, "end", socket_end);
@@ -1104,7 +1100,6 @@ static void net_server_listen_entry(void *listen_info)
                 else
                 {
                     /*set the socket's server*/
-                    //GET_SOCKET_INFO(js_socket);
                     struct socket_info *js_socket_info = RT_NULL;
                     get_net_info((void **)&js_socket_info, js_socket);
                     js_socket_info->js_server = js_server;
@@ -1185,7 +1180,6 @@ DECLARE_HANDLER(server_listen)
         return jerry_create_undefined();
 
     /*get server info*/
-    //GET_SERVER_INFO(this_value);
     net_serverInfo_t *js_server_info = RT_NULL;
     get_net_info((void **)&js_server_info, this_value);
     /*end listen_thread*/
@@ -1330,7 +1324,6 @@ DECLARE_HANDLER(server_listen)
             listen_info->js_server = this_value;
             listen_info->backlog = backlog;
 
-            //GET_SOCKET_INFO(info->js_target);
             struct socket_info *js_socket_info = RT_NULL;
             get_net_info((void **)&js_socket_info, this_value);
 
@@ -1359,7 +1352,6 @@ __exit:
 }
 
 /* the method of net */
-
 DECLARE_HANDLER(net_connect)
 {
     if (args_cnt == 0 || args_cnt > 3)
