@@ -84,6 +84,8 @@ struct write_data_info
 {
     jerry_value_t js_data;
     jerry_value_t js_callback;
+    bool stop_read;
+    rt_sem_t stop_sem;
 } typedef net_writeInfo_t;
 
 struct event_callback_info
