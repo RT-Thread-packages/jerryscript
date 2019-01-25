@@ -1,6 +1,9 @@
 #include "jerry_mqtt.h"
-#include <rtdbg.h>
 
+#ifdef PKG_USING_PAHOMQTT
+
+#include <rtdbg.h>
+#define PIPE_BUFSZ    512
 static bool hasClient = false;
 
 void mqtt_event_callback(const void *args, uint32_t size)
@@ -137,12 +140,11 @@ void mqtt_offline_callback(MQTTClient *c)
 
 void mqtt_client_free_callback(void *native_p)
 {
-    rt_kprintf("=============free call back============\n");
     mqtt_info_t* mqtt_info =  (mqtt_info_t*)native_p;
 
     if(!mqtt_info)
     {
-        rt_kprintf("close >> null\n");
+		return;
     }
     
     if(mqtt_info->client->isconnected == 1)
@@ -150,15 +152,14 @@ void mqtt_client_free_callback(void *native_p)
         MQTT_CMD(mqtt_info->client,"DISCONNECT");
     }
 
-    rt_kprintf("1\n");
     if(mqtt_info->sem)
     {
         rt_sem_delete(mqtt_info->sem);
         mqtt_info->sem = RT_NULL;
+		js_destroy_emitter(mqtt_info->this_value);
     }
-    js_destroy_emitter(mqtt_info->this_value);
+    
 
-    rt_kprintf("2\n");
     if(mqtt_info->close_callback)
     {
         js_remove_callback(mqtt_info->close_callback);
@@ -174,37 +175,30 @@ void mqtt_client_free_callback(void *native_p)
         js_remove_callback(mqtt_info->fun_callback);
     }
 
-    rt_kprintf("3\n");
     if(mqtt_info->client)
     {
-        rt_kprintf("3-1\n");
         if(mqtt_info->client->uri)
         {
             free((void*)mqtt_info->client->uri);
         }
-        rt_kprintf("3-2\n");
         if(mqtt_info->client->buf)
         {
             free(mqtt_info->client->buf);
         }
-        rt_kprintf("3-3\n");
         if(mqtt_info->client->readbuf)
         {
             free(mqtt_info->client->readbuf);
         }
-        rt_kprintf("3-4\n");
         for(int i =0 ; i < MAX_MESSAGE_HANDLERS ; i++)
         {
             if(mqtt_info->client->messageHandlers[i].topicFilter)
             {
-                rt_kprintf("free topic : %s\n",mqtt_info->client->messageHandlers[i].topicFilter);
                 free(mqtt_info->client->messageHandlers[i].topicFilter);
             }
         }
         free(mqtt_info->client);
     }
 
-    rt_kprintf("4\n");
     for(int i =0 ; i < MAX_MESSAGE_HANDLERS ; i++)
     {
         if(mqtt_info->callbackHandler[i].topic)
@@ -214,11 +208,10 @@ void mqtt_client_free_callback(void *native_p)
             mqtt_info->callbackHandler[i].js_func = RT_NULL;
         }
     }
-    rt_kprintf("5\n");
+
     free(mqtt_info);
     
     hasClient = false;
-    rt_kprintf("end\n");
 }
 
 const static jerry_object_native_info_t mqtt_client_info =
@@ -645,7 +638,6 @@ static jerry_value_t mqtt_create_client(int arg_cnt,const jerry_value_t* args)
     jerry_value_t js_client = jerry_create_object();
     mqtt_info_t* client_info = RT_NULL;
 
-    rt_kprintf("hasClient  : %d \n",hasClient);
     if(hasClient == true)
     {
         goto _exit;
@@ -936,3 +928,5 @@ static jerry_value_t jerry_mqtt_init()
 }
 
 JS_MODULE(mqtt, jerry_mqtt_init)
+
+#endif
