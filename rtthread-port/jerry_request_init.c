@@ -22,7 +22,6 @@ void request_callback_func(const void *args, uint32_t size)
         jerry_release_value(cb_info->data_value);
     }
 
-	free(cb_info->callback_name);
     free(cb_info);
 }
 
@@ -365,6 +364,7 @@ int jerry_request_init(jerry_value_t obj)
 
 static jerry_value_t _jerry_request_init()
 {
+    rt_kprintf(">>>>>>>>>>>>>>>_jerry_request_init<<<<<<<<<<<<<<<<<<<<<\n");
     jerry_value_t js_requset = jerry_create_object();
 
     REGISTER_METHOD_NAME(js_requset, "request", request);
