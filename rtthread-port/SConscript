@@ -1,0 +1,11 @@
+# RT-Thread building script for JerryScript RT port
+
+from building import *
+
+cwd = GetCurrentDir()
+src = Glob('*.c')
+CPPPATH = [cwd]
+
+group = DefineGroup('JerryScriptRT', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = CPPPATH)
+
+Return('group')

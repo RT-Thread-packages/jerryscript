@@ -70,6 +70,7 @@ void request_create_header(struct webclient_session *session, jerry_value_t head
     int per_enter_index = -1;
     char header_type[64];
     char header_info[128];
+
     for (int i = 0 ; i < session->header->length ; i++)
     {
         if (session->header->buffer[i] == ':' && per_enter_index != enter_index)
@@ -127,8 +128,8 @@ bool request_get_header(struct webclient_session *session, jerry_value_t header_
 void request_read_entry(void *p)
 {
     request_tdinfo_t *rp = (request_tdinfo_t *)p;
-
     unsigned char *buffer = RT_NULL;
+
     buffer = (unsigned char *)malloc(READ_MAX_SIZE + 1);
     if (!buffer)
     {
@@ -163,9 +164,6 @@ void request_read_entry(void *p)
         jerry_value_t data_value = jerry_buffer_create(ret_read, &js_buffer);
         if (js_buffer)
         {
-            jerry_value_t length_value = jerry_create_number(js_buffer->bufsize);
-            js_set_property(data_value, "length", length_value);
-            jerry_release_value(length_value);
             rt_memcpy(js_buffer->buffer, buffer, ret_read);
         }
         js_set_property(return_value, "data", data_value);

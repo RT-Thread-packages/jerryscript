@@ -5,15 +5,21 @@
 
 static jerry_value_t js_message_obj = 0;
 static struct js_callback *js_message_cb = NULL;
+static js_message_send_func js_msg_send_func = NULL;
 
 struct js_message
 {
     char *name;
     rt_uint8_t *data;
-    rt_uint16_t size;
+    rt_uint32_t size;
 };
 
-rt_bool_t js_message_send(const char *name, rt_uint8_t *data, rt_uint16_t size)
+void js_message_send_func_init(js_message_send_func func)
+{
+    js_msg_send_func = func;
+}
+
+rt_bool_t js_message_send(const char *name, rt_uint8_t *data, rt_uint32_t size)
 {
     rt_bool_t ret = RT_FALSE;
 
@@ -40,7 +46,7 @@ rt_bool_t js_message_send(const char *name, rt_uint8_t *data, rt_uint16_t size)
     return ret;
 }
 
-static void js_callback_message(const void *args, uint32_t size)
+static void js_callback_message(const void *args, rt_uint32_t size)
 {
     struct js_message *msg = (struct js_message *)args;
     if (msg)
@@ -49,12 +55,8 @@ static void js_callback_message(const void *args, uint32_t size)
         jerry_value_t buf_obj = jerry_buffer_create(msg->size, &buffer);
         if (buffer)
         {
-            if (buffer->bufsize > 0)
-            {
-                js_set_property(buf_obj, "length", jerry_create_number(buffer->bufsize));
-                rt_memcpy(buffer->buffer, msg->data, msg->size);
-                js_emit_event(js_message_obj, msg->name, &buf_obj, 1);
-            }
+            rt_memcpy(buffer->buffer, msg->data, msg->size);
+            js_emit_event(js_message_obj, msg->name, &buf_obj, 1);
         }
         /* release value */
         jerry_release_value(buf_obj);
@@ -64,17 +66,97 @@ static void js_callback_message(const void *args, uint32_t size)
     }
 }
 
+static void js_message_info_free(void *native)
+{
+    js_message_obj = 0;
+    js_remove_callback(js_message_cb);
+    js_message_cb = NULL;
+}
+
+static const jerry_object_native_info_t js_message_info =
+{
+    .free_cb = js_message_info_free
+};
+
+DECLARE_HANDLER(send)
+{
+    bool result = false;
+
+    if (js_msg_send_func && args_cnt == 2 && jerry_value_is_string(args[0]))
+    {
+        if (jerry_value_to_string(args[1]))
+        {
+            char *name = js_value_to_string(args[0]);
+            if (name)
+            {
+                char *str = js_value_to_string(args[1]);
+                js_msg_send_func(name, (rt_uint8_t *)str, rt_strlen(str));
+                result = true;
+                rt_free(str);
+                rt_free(name);
+            }
+        }
+        else
+        {
+            js_buffer_t *buffer = jerry_buffer_find(args[1]);
+            if (buffer)
+            {
+                char *name = js_value_to_string(args[0]);
+                if (name)
+                {
+                    js_msg_send_func(name, buffer->buffer, buffer->bufsize);
+                    result = true;
+                    rt_free(name);
+                }
+            }
+        }
+    } 
+
+    return jerry_create_boolean(result);
+}
+
+DECLARE_HANDLER(destroy)
+{
+    js_destroy_emitter(this_value);
+ 
+    return jerry_create_boolean(true);
+}
+
 DECLARE_HANDLER(Message)
 {
+    jerry_value_t info = 0;
+
     if (js_message_obj != 0)
-        return jerry_acquire_value(js_message_obj);
+        return jerry_create_undefined();
 
     js_message_obj = jerry_create_object();
+    if (jerry_value_is_error(js_message_obj))
+    {
+        jerry_release_value(js_message_obj);
+        return jerry_create_undefined();
+    }
+
+    info = jerry_create_object();
+    if (jerry_value_is_error(js_message_obj))
+    {
+        jerry_release_value(js_message_obj);
+        jerry_release_value(info);
+        return jerry_create_undefined();
+    }
+
+    REGISTER_METHOD(js_message_obj, send);
+    REGISTER_METHOD(js_message_obj, destroy);
+
     js_make_emitter(js_message_obj, jerry_create_undefined());
+
+    jerry_set_object_native_pointer(info, NULL, &js_message_info);
+    js_set_property(js_message_obj, "info", info);
+    jerry_release_value(info);
+
     js_message_cb = js_add_callback(js_callback_message);
     if (js_message_cb)
     {
-        return jerry_acquire_value(js_message_obj);
+        return js_message_obj;
     }
     else
     {
@@ -86,20 +168,6 @@ DECLARE_HANDLER(Message)
 int js_message_init(void)
 {
     REGISTER_HANDLER(Message);
-
-    return 0;
-}
-
-int js_message_deinit(void)
-{
-    if (js_message_cb)
-    {
-        js_destroy_emitter(js_message_obj);
-        jerry_release_value(js_message_obj);
-        js_message_obj = 0;
-        js_remove_callback(js_message_cb);
-        js_message_cb = NULL;
-    }
 
     return 0;
 }

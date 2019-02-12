@@ -1,77 +1,57 @@
+# RT-Thread building script for JerryScript
+
 import os
 from building import *
 
 # get current directory
 cwd = GetCurrentDir()
+
 jerry_core_dir = 'jerryscript/jerry-core'
 
-SOURCE_CORE                 = Glob(jerry_core_dir + '/*.c')
-SOURCE_CORE_API             = Glob(jerry_core_dir + '/api/*.c')
-SOURCE_CORE_DEBUG           = Glob(jerry_core_dir + '/debugger/*.c')
-SOURCE_CORE_ECMA_BASE       = Glob(jerry_core_dir + '/ecma/base/*.c')
-SOURCE_CORE_ECMA_BUILTINS   = Glob(jerry_core_dir + '/ecma/builtin-objects/*.c')
-SOURCE_CORE_ECMA_BUILTINS_TYPEDARRAY   = Glob(jerry_core_dir + '/ecma/builtin-objects/typedarray/*.c')
-SOURCE_CORE_ECMA_OPERATIONS = Glob(jerry_core_dir + '/ecma/operations/*.c')
-SOURCE_CORE_JCONTEXT        = Glob(jerry_core_dir + '/jcontext/*.c')
-SOURCE_CORE_JMEM            = Glob(jerry_core_dir + '/jmem/*.c')
-SOURCE_CORE_JRT             = Glob(jerry_core_dir + '/jrt/*.c')
-SOURCE_CORE_LIT             = Glob(jerry_core_dir + '/lit/*.c')
-SOURCE_CORE_PARSER_JS       = Glob(jerry_core_dir + '/parser/js/*.c')
-SOURCE_CORE_PARSER_REGEXP   = Glob(jerry_core_dir + '/parser/regexp/*.c')
-SOURCE_CORE_VM              = Glob(jerry_core_dir + '/vm/*.c')
-
-SOURCE_CORE_PORT            = Glob('rtthread-port/*.c')
-
-jerry_core = SOURCE_CORE
-jerry_core += SOURCE_CORE_API
-jerry_core += SOURCE_CORE_DEBUG
-jerry_core += SOURCE_CORE_ECMA_BASE
-jerry_core += SOURCE_CORE_ECMA_BUILTINS
-jerry_core += SOURCE_CORE_ECMA_BUILTINS_TYPEDARRAY
-jerry_core += SOURCE_CORE_ECMA_OPERATIONS
-jerry_core += SOURCE_CORE_JCONTEXT
-jerry_core += SOURCE_CORE_JMEM
-jerry_core += SOURCE_CORE_JRT
-jerry_core += SOURCE_CORE_LIT
-jerry_core += SOURCE_CORE_PARSER_JS
-jerry_core += SOURCE_CORE_PARSER_REGEXP
-jerry_core += SOURCE_CORE_PORT
-jerry_core += SOURCE_CORE_VM
+jerry_core = Glob(jerry_core_dir + '/*.c')
+jerry_core += Glob(jerry_core_dir + '/api/*.c')
+jerry_core += Glob(jerry_core_dir + '/debugger/*.c')
+jerry_core += Glob(jerry_core_dir + '/ecma/base/*.c')
+jerry_core += Glob(jerry_core_dir + '/ecma/builtin-objects/*.c')
+jerry_core += Glob(jerry_core_dir + '/ecma/builtin-objects/typedarray/*.c')
+jerry_core += Glob(jerry_core_dir + '/ecma/operations/*.c')
+jerry_core += Glob(jerry_core_dir + '/jcontext/*.c')
+jerry_core += Glob(jerry_core_dir + '/jmem/*.c')
+jerry_core += Glob(jerry_core_dir + '/jrt/*.c')
+jerry_core += Glob(jerry_core_dir + '/lit/*.c')
+jerry_core += Glob(jerry_core_dir + '/parser/js/*.c')
+jerry_core += Glob(jerry_core_dir + '/parser/regexp/*.c')
+jerry_core += Glob(jerry_core_dir + '/vm/*.c')
 
 jerry_ext_dir = 'jerryscript/jerry-ext'
 
-SOURCE_EXT_ARG              = Glob(jerry_ext_dir + '/arg/*.c')
-SOURCE_EXT_HANDLER          = Glob(jerry_ext_dir + '/handler/*.c')
-SOURCE_EXT_INCLUDE          = Glob(jerry_ext_dir + '/include/*.c')
-SOURCE_EXT_MODULE           = Glob(jerry_ext_dir + '/module/*.c')
-
-jerry_ext = SOURCE_EXT_ARG + SOURCE_EXT_HANDLER + SOURCE_EXT_INCLUDE + SOURCE_EXT_MODULE
+jerry_ext = Glob(jerry_ext_dir + '/arg/*.c')
+jerry_ext += Glob(jerry_ext_dir + '/handler/*.c')
+jerry_ext += Glob(jerry_ext_dir + '/include/*.c')
+jerry_ext += Glob(jerry_ext_dir + '/module/*.c')
 
 src = jerry_core + jerry_ext
 
-jerry_core_dir = cwd + '/jerryscript/jerry-core'
+CPPPATH = [cwd]
+CPPPATH += [jerry_core_dir + '/api']
+CPPPATH += [jerry_core_dir + '/debugger']
+CPPPATH += [jerry_core_dir + '/ecma/base']
+CPPPATH += [jerry_core_dir + '/ecma/builtin-objects']
+CPPPATH += [jerry_core_dir + '/ecma/builtin-objects/typedarray']
+CPPPATH += [jerry_core_dir + '/ecma/operations']
+CPPPATH += [jerry_core_dir + '/include']
+CPPPATH += [jerry_core_dir + '/jcontext']
+CPPPATH += [jerry_core_dir + '/jmem']
+CPPPATH += [jerry_core_dir + '/jrt']
+CPPPATH += [jerry_core_dir + '/lit']
+CPPPATH += [jerry_core_dir + '/parser/js']
+CPPPATH += [jerry_core_dir + '/parser/regexp']
+CPPPATH += [jerry_core_dir + '/vm']
 
-path = [cwd]
-path += [cwd + '/rtthread-port']
-path += [jerry_core_dir + '/api']
-path += [jerry_core_dir + '/debugger']
-path += [jerry_core_dir + '/ecma/base']
-path += [jerry_core_dir + '/ecma/builtin-objects']
-path += [jerry_core_dir + '/ecma/builtin-objects/typedarray']
-path += [jerry_core_dir + '/ecma/operations']
-path += [jerry_core_dir + '/include']
-path += [jerry_core_dir + '/jcontext']
-path += [jerry_core_dir + '/jmem']
-path += [jerry_core_dir + '/jrt']
-path += [jerry_core_dir + '/lit']
-path += [jerry_core_dir + '/parser/js']
-path += [jerry_core_dir + '/parser/regexp']
-path += [jerry_core_dir + '/vm']
-
-path += [jerry_ext_dir + '/arg']
-path += [jerry_ext_dir + '/handler']
-path += [jerry_ext_dir + '/include']
-path += [jerry_ext_dir + '/module']
+CPPPATH += [jerry_ext_dir + '/arg']
+CPPPATH += [jerry_ext_dir + '/handler']
+CPPPATH += [jerry_ext_dir + '/include']
+CPPPATH += [jerry_ext_dir + '/module']
 
 LOCAL_CCFLAGS = ''
 import rtconfig
@@ -92,13 +72,10 @@ if GetDepend('PKG_JMEM_STATS'):
 if GetDepend('PKG_CONFIG_DISABLE_ES2015'):
     CPPDEFINES += ['CONFIG_DISABLE_ES2015']
 
-group = DefineGroup('JerryScript', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = path, 
+group = DefineGroup('JerryScript', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = CPPPATH, 
     CPPDEFINES = CPPDEFINES, LOCAL_CCFLAGS = LOCAL_CCFLAGS)
 
-list = os.listdir(cwd)
-
-for item in list:
-	if os.path.isfile(os.path.join(cwd, item, 'SConscript')):
-		group = group + SConscript(os.path.join(item, 'SConscript'))
+if GetDepend('PKG_USING_JERRYSCRIPT'):
+    group = group + SConscript(os.path.join('rtthread-port', 'SConscript'))
 
 Return('group')

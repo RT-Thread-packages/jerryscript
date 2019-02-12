@@ -1,6 +1,8 @@
+#include <rtdevice.h>
 #include "jerry_net.h"
 /* manage the pipe of socket */
 
+#undef PIPE_BUFSZ
 #define PIPE_BUFSZ    512
 
 static rt_int32_t pipe_init(struct socket_info *thiz)
@@ -426,7 +428,6 @@ void net_socket_readData(jerry_value_t js_socket)
     jerry_value_t data_value = jerry_buffer_create(bytesRead, &js_buffer);
     if (js_buffer)
     {
-        js_set_property(data_value, "length", jerry_create_number(js_buffer->bufsize));
         rt_memcpy(js_buffer->buffer, buffer, bytesRead);
     }
 
@@ -564,11 +565,12 @@ void net_socket_readData_entry(void *p)
 
         if (FD_ISSET(pipe_read_fd, &readfds))
         {
-            rt_sem_take(js_socket_info->socket_sem, RT_WAITING_FOREVER);
             //read from pipe
             static net_writeInfo_t write_info;
+            
+            rt_sem_take(js_socket_info->socket_sem, RT_WAITING_FOREVER);
             memset(&write_info, 0, sizeof(net_writeInfo_t));
-            int bytesRead = read(js_socket_info->pipe_read_fd, &write_info, sizeof(net_writeInfo_t));
+            read(js_socket_info->pipe_read_fd, &write_info, sizeof(net_writeInfo_t));
             if (write_info.stop_read && write_info.stop_sem)
             {
                 pipe_deinit(js_socket_info);
@@ -1089,10 +1091,10 @@ static void net_server_listen_entry(void *listen_info)
     /*start listening and accepting*/
     if (socket > 0)
     {
-        int ret = listen(server_id, backlog); // start listen
         struct sockaddr_in client_addr;
         socklen_t addrlen = 1;
 
+        listen(server_id, backlog); // start listen
         rt_kprintf("SERVER_MAX_CONNECTIONS : %d \n", backlog);
         while (1)
         {

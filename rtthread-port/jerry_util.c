@@ -8,7 +8,13 @@
 #include <jerry_event.h>
 #include <jerry_message.h>
 
-static rt_mutex_t _util_lock = RT_NULL;
+extern int js_console_init(void);
+extern int js_module_init(void);
+extern int js_buffer_init(void);
+extern int js_buffer_cleanup(void);
+
+static rt_mutex_t _util_lock = NULL;
+static js_util_user _user_init = NULL, _user_cleanup = NULL;
 
 void js_set_property(const jerry_value_t obj, const char *name,
                      const jerry_value_t prop)
@@ -207,6 +213,7 @@ int js_read_file(const char* filename, char **script)
     FILE *fp;
     int length = 0;
     struct stat statbuf;
+
     if (!filename || !script) return 0;
 
     stat(filename, &statbuf);
@@ -217,14 +224,16 @@ int js_read_file(const char* filename, char **script)
     *script = (char *)rt_malloc(length + 1);
     if(!(*script)) return 0;
     (*script)[length] = '\0';
-    fp = fopen(filename,"rb");
+
+    fp = fopen(filename, "rb");
     if(!fp)
     {
         rt_free(*script);
         *script = RT_NULL;
         return 0;
     }
-    if(fread(*script,length,1,fp) != 1)
+
+    if(fread(*script, length, 1, fp) != 1)
     {
         length = 0;
         rt_free(*script);
@@ -232,15 +241,9 @@ int js_read_file(const char* filename, char **script)
         printf("read failed!\n");
     }
     fclose(fp);
+
     return length;
 }
-
-extern int js_console_init(void);
-extern int js_module_init(void);
-extern int js_buffer_init(void);
-extern int js_buffer_cleanup(void);
-
-static js_util_user _user_init = NULL, _user_cleanup = NULL;
 
 int js_util_init(void)
 {
@@ -262,7 +265,6 @@ int js_util_init(void)
 
 int js_util_cleanup(void)
 {
-    js_message_deinit();
     js_event_deinit();
     js_buffer_cleanup();
     if (_user_cleanup != NULL)
