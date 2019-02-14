@@ -84,7 +84,7 @@ DECLARE_HANDLER(send)
 
     if (js_msg_send_func && args_cnt == 2 && jerry_value_is_string(args[0]))
     {
-        if (jerry_value_to_string(args[1]))
+        if (jerry_value_is_string(args[1]))
         {
             char *name = js_value_to_string(args[0]);
             if (name)
