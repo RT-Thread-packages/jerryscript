@@ -11,6 +11,10 @@
 #include <jerryscript-ext/module.h>
 #include <ecma-globals.h>
 
+#ifdef RT_USING_MODULE
+#include <dlfcn.h>
+#endif
+
 #ifndef PATH_MAX
 #define PATH_MAX    256
 #endif
@@ -323,52 +327,109 @@ static const jerryx_module_resolver_t *resolvers[] =
 #endif
 };
 
+#ifdef RT_USING_MODULE
+
+typedef jerry_value_t (*FFI_INIT)(void);
+
+static void js_module_info_free(void *native)
+{
+    dlclose(native);
+}
+
+static const jerry_object_native_info_t js_module_info =
+{
+    .free_cb = js_module_info_free
+};
+
+#endif
+
 DECLARE_HANDLER(require)
 {
+    jerry_value_t result;
+    char *module = NULL;
+
     if (args_cnt == 0)
     {
         printf("No module name supplied\n");
-        return jerry_create_null();
+        return jerry_create_undefined();
     }
 
     if (jerry_value_is_string(args[0]) == 0)
     {
         printf("No module name supplied as string\n");
-        return jerry_create_null();
+        return jerry_create_undefined();
     }
 
-    /* make new module.exports */
-    jerry_value_t global_obj  = jerry_get_global_object();
-    jerry_value_t modules_obj = ECMA_VALUE_UNDEFINED;
-    jerry_value_t exports_obj = ECMA_VALUE_UNDEFINED;
-
-    modules_obj = js_get_property(global_obj, "module");
-    exports_obj = js_get_property(modules_obj, "exports");
-
-    jerry_value_t module_exports_obj = jerry_create_object();
-    js_set_property(modules_obj, "exports", module_exports_obj);
-    jerry_release_value(module_exports_obj);
-
+    module = js_value_to_string(args[0]);
     /* Try each of the resolvers to see if we can find the requested module */
-    char *module = js_value_to_string(args[0]);
-    jerry_value_t result = jerryx_module_resolve(args[0], resolvers, sizeof(resolvers)/sizeof(resolvers[0]));
-    if (jerry_value_is_error(result))
+#ifdef RT_USING_MODULE
+    if (strstr(module, ".so"))
     {
-        printf("Couldn't load module %s\n", module);
+        void* handle;
+        FFI_INIT ffi_init;
+        jerry_value_t info;
 
-        jerry_release_value(result);
+        do
+        {
+            handle = dlopen(module, RTLD_LAZY);
+            if(!handle)
+            {
+                printf("dlopen %s failed!\n", module);
+                result = jerry_create_undefined();
+                break;
+            }
 
-        /* create result with error */
-        result = jerry_create_error(JERRY_ERROR_TYPE,
-                                    (const jerry_char_t *) "Module not found");
+            ffi_init = (FFI_INIT)dlsym(handle,"ffi_init");
+            if(!ffi_init)
+            {
+                printf("ffi_init not found!\n");
+                result = jerry_create_undefined();
+                dlclose(handle);
+                break;
+            }
+
+            result = ffi_init();
+            info = jerry_create_object();
+            jerry_set_object_native_pointer(info, handle, &js_module_info);
+            js_set_property(result, "info", info);
+            jerry_release_value(info);
+        }
+        while(0);
     }
+    else
+#endif
+    {
+        /* make new module.exports */
+        jerry_value_t global_obj  = jerry_get_global_object();
+        jerry_value_t modules_obj = ECMA_VALUE_UNDEFINED;
+        jerry_value_t exports_obj = ECMA_VALUE_UNDEFINED;
 
-    /* restore the parent module.exports */
-    js_set_property(modules_obj, "exports", exports_obj);
+        modules_obj = js_get_property(global_obj, "module");
+        exports_obj = js_get_property(modules_obj, "exports");
 
-    jerry_release_value(global_obj);
-    jerry_release_value(modules_obj);
-    jerry_release_value(exports_obj);
+        jerry_value_t module_exports_obj = jerry_create_object();
+        js_set_property(modules_obj, "exports", module_exports_obj);
+        jerry_release_value(module_exports_obj);
+
+        result = jerryx_module_resolve(args[0], resolvers, sizeof(resolvers)/sizeof(resolvers[0]));
+        if (jerry_value_is_error(result))
+        {
+            printf("Couldn't load module %s\n", module);
+
+            jerry_release_value(result);
+
+            /* create result with error */
+            result = jerry_create_error(JERRY_ERROR_TYPE,
+                                        (const jerry_char_t *) "Module not found");
+        }
+
+        /* restore the parent module.exports */
+        js_set_property(modules_obj, "exports", exports_obj);
+
+        jerry_release_value(global_obj);
+        jerry_release_value(modules_obj);
+        jerry_release_value(exports_obj);
+    }
 
     free(module);
 
