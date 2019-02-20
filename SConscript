@@ -33,6 +33,9 @@ jerry_ext += Glob(jerry_ext_dir + '/module/*.c')
 src = jerry_core + jerry_ext
 
 CPPPATH = [cwd]
+
+jerry_core_dir = cwd + '/jerryscript/jerry-core'
+
 CPPPATH += [jerry_core_dir + '/api']
 CPPPATH += [jerry_core_dir + '/debugger']
 CPPPATH += [jerry_core_dir + '/ecma/base']
@@ -47,6 +50,8 @@ CPPPATH += [jerry_core_dir + '/lit']
 CPPPATH += [jerry_core_dir + '/parser/js']
 CPPPATH += [jerry_core_dir + '/parser/regexp']
 CPPPATH += [jerry_core_dir + '/vm']
+
+jerry_ext_dir = cwd + '/jerryscript/jerry-ext'
 
 CPPPATH += [jerry_ext_dir + '/arg']
 CPPPATH += [jerry_ext_dir + '/handler']
