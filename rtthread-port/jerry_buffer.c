@@ -805,7 +805,9 @@ jerry_value_t jerry_buffer_create(uint32_t size, js_buffer_t **ret_buf)
     buf_item->bufsize = size;
 
     jerry_set_prototype(buf_obj, jerry_buffer_prototype);
-    js_set_property(buf_obj, "length", jerry_create_number(size));
+    jerry_value_t length = jerry_create_number(size);
+    js_set_property(buf_obj, "length", length);
+    jerry_release_value(length);
 
     // watch for the object getting garbage collected, and clean up
     jerry_set_object_native_pointer(buf_obj, buf_item, &buffer_type_info);

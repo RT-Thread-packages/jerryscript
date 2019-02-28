@@ -36,8 +36,11 @@ rt_bool_t js_message_send(const char *name, rt_uint8_t *data, rt_uint32_t size)
                 rt_memcpy(msg->data, data, size);
                 ret = js_send_callback(js_message_cb, msg, sizeof(struct js_message));
             }
-            else
+
+            if (!ret)
             {
+                rt_free(msg->data);
+                rt_free(msg->name);
                 rt_free(msg);
             }
         }
