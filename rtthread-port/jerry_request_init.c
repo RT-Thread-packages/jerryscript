@@ -28,9 +28,21 @@ void request_callback_func(const void *args, uint32_t size)
 void request_callback_free(const void *args, uint32_t size)
 {
     request_tdinfo_t *rp = (request_tdinfo_t *)args;
-    if (rp->session)
+    if (rp->config)
     {
-        webclient_close(rp->session);
+        if (rp->config->session)
+        {
+            webclient_close(rp->config->session);
+        }
+        if (rp->config->url)
+        {
+            free(rp->config->url);
+        }
+        if (rp->config->data)
+        {
+            free(rp->config->data);
+        }
+        free(rp->config);
     }
     js_remove_callback(rp->request_callback);
     js_remove_callback(rp->close_callback);
@@ -86,7 +98,9 @@ void request_create_header(struct webclient_session *session, jerry_value_t head
             jerry_release_value(header_info_value);
         }
         if (session->header->buffer[i] == '\0')
+        {
             enter_index = i;
+        }
     }
 }
 
@@ -128,8 +142,50 @@ bool request_get_header(struct webclient_session *session, jerry_value_t header_
 void request_read_entry(void *p)
 {
     request_tdinfo_t *rp = (request_tdinfo_t *)p;
-    unsigned char *buffer = RT_NULL;
 
+    if (rp->config->session != RT_NULL && rp->config->method == WEBCLIENT_GET)
+    {
+        rp->config->response = webclient_get(rp->config->session, rp->config->url);
+    }
+    else if (rp->config->session != RT_NULL && rp->config->method == WEBCLIENT_POST)
+    {
+        webclient_header_fields_add(rp->config->session, "Content-Length: %d\r\n", strlen(rp->config->data));
+        webclient_header_fields_add(rp->config->session, "Content-Type: application/octet-stream\r\n");
+        rp->config->response = webclient_post(rp->config->session, rp->config->url, rp->config->data);
+    }
+
+    free(rp->config->data);
+    rp->config->data = RT_NULL;
+    free(rp->config->url);
+    rp->config->url = RT_NULL;
+
+    if (rp->config->session == RT_NULL || rp->config->response != 200)
+    {
+        //do fail callback
+        request_cbinfo_t *fail_info  = (request_cbinfo_t *)malloc(sizeof(request_cbinfo_t));
+        fail_info->target_value = rp->target_value;
+        fail_info->callback_name = rt_strdup("fail");
+        fail_info->return_value = RT_NULL;
+        fail_info->data_value = RT_NULL;
+        js_send_callback(rp->request_callback, fail_info, sizeof(request_cbinfo_t));
+        free(fail_info);
+
+        //do complete callback
+        request_cbinfo_t *complete_info  = (request_cbinfo_t *)malloc(sizeof(request_cbinfo_t));;
+        complete_info->target_value = rp->target_value;
+        complete_info->callback_name = rt_strdup("complete");
+        complete_info->return_value = RT_NULL;
+        complete_info->data_value = RT_NULL;
+        js_send_callback(rp->request_callback, complete_info, sizeof(request_cbinfo_t));
+        free(complete_info);
+
+        goto __exit;
+    }
+
+    unsigned char *buffer = RT_NULL;
+    int ret_read = 0;
+    int content_length = webclient_content_length_get(rp->config->session);
+    int per_read_length = 0;
     buffer = (unsigned char *)malloc(READ_MAX_SIZE + 1);
     if (!buffer)
     {
@@ -138,15 +194,36 @@ void request_read_entry(void *p)
     }
     memset(buffer, 0, READ_MAX_SIZE + 1);
 
-    //create a callback function to free manager and close webClient session
-    int ret_read = 0;
-    ret_read = webclient_read(rp->session, buffer, READ_MAX_SIZE + 1);
+    if (content_length != -1)
+    {
+        while (ret_read < content_length)
+        {
+            per_read_length += webclient_read(rp->config->session, buffer + ret_read, READ_MAX_SIZE + 1 - ret_read);
+            if (per_read_length < 0)
+            {
+                ret_read = -1;
+                break;
+            }
+            ret_read += per_read_length;
+        }
+    }
+    else    //Transfer-Encoding: chunked
+    {
+        while (ret_read < READ_MAX_SIZE)
+        {
+            per_read_length = webclient_read(rp->config->session, buffer + ret_read, READ_MAX_SIZE + 1 - ret_read);
+            if (per_read_length <= 0)
+            {
+                break;
+            }
+            ret_read += per_read_length;
+        }
+    }
+
     //If file's size is bigger than buffer's,
     //give up reading and send a fail callback
-    if (ret_read > READ_MAX_SIZE)
+    if (ret_read > READ_MAX_SIZE || ret_read < 0)
     {
-        rt_kprintf("the received message's size is bigger than buffer's\n");
-
         request_cbinfo_t *fail_info = (request_cbinfo_t *)malloc(sizeof(request_cbinfo_t));
         fail_info->target_value = rp->target_value;
         fail_info->callback_name = rt_strdup("fail");
@@ -168,13 +245,13 @@ void request_read_entry(void *p)
         }
         js_set_property(return_value, "data", data_value);
 
-        jerry_value_t statusCode_value = jerry_create_number(webclient_resp_status_get(rp->session));
+        jerry_value_t statusCode_value = jerry_create_number(webclient_resp_status_get(rp->config->session));
         js_set_property(return_value, "statusCode", statusCode_value);
         jerry_release_value(statusCode_value);
 
         /*** header's data saved as Object ***/
         jerry_value_t header_value = jerry_create_object();
-        request_create_header(rp->session, header_value);
+        request_create_header(rp->config->session, header_value);
         js_set_property(return_value, "header", header_value);
         jerry_release_value(header_value);
 
@@ -188,7 +265,7 @@ void request_read_entry(void *p)
         js_send_callback(rp->request_callback, success_info, sizeof(request_cbinfo_t));
         free(success_info);
     }
-
+    free(buffer);
     //do complete callback
     request_cbinfo_t *complete_info  = (request_cbinfo_t *)malloc(sizeof(request_cbinfo_t));;
     complete_info->target_value = rp->target_value;
@@ -198,9 +275,9 @@ void request_read_entry(void *p)
     js_send_callback(rp->request_callback, complete_info, sizeof(request_cbinfo_t));
     free(complete_info);
 
-    free(buffer);
+__exit:
+    //create a callback function to free manager and close webClient session
     js_send_callback(rp->close_callback, rp, sizeof(request_cbinfo_t));
-    free(rp);
 }
 
 void requeset_add_event_listener(jerry_value_t js_target, jerry_value_t requestObj)
@@ -289,69 +366,25 @@ DECLARE_HANDLER(request)
 
     requeset_add_event_listener(rqObj, requestObj);
 
-    request_config_t config;
-    config.method = WEBCLIENT_GET;
-    config.url = RT_NULL;
-    config.data = RT_NULL;
-    config.response = 0;
-    config.session = RT_NULL;
+    request_config_t *config = (request_config_t *)malloc(sizeof(request_config_t));
+    config->method = WEBCLIENT_GET;
+    config->url = RT_NULL;
+    config->data = RT_NULL;
+    config->response = 0;
+    config->session = RT_NULL;
 
-    reqeuset_get_config(&config, requestObj);
-
-    if (config.session != RT_NULL && config.method == WEBCLIENT_GET)
-    {
-        config.response = webclient_get(config.session, config.url);
-    }
-    else if (config.session != RT_NULL && config.method == WEBCLIENT_POST)
-    {
-        webclient_header_fields_add(config.session, "Content-Length: %d\r\n", strlen(config.data));
-        webclient_header_fields_add(config.session, "Content-Type: application/octet-stream\r\n");
-        config.response = webclient_post(config.session, config.url, config.data);
-    }
-
-    free(config.data);
-    free(config.url);
+    reqeuset_get_config(config, requestObj);
 
     request_tdinfo_t *rp = (request_tdinfo_t *)malloc(sizeof(request_tdinfo_t));
     memset(rp, 0, sizeof(request_tdinfo_t));
     rp->request_callback = request_callback;
     rp->close_callback = close_callback;
     rp->target_value = rqObj;
-    rp->session = config.session;
-
-    if (config.session == RT_NULL || config.response != 200)
-    {
-        //do fail callback
-        request_cbinfo_t *fail_info  = (request_cbinfo_t *)malloc(sizeof(request_cbinfo_t));
-        fail_info->target_value = rqObj;
-        fail_info->callback_name = rt_strdup("fail");
-        fail_info->return_value = RT_NULL;
-        fail_info->data_value = RT_NULL;
-
-        js_send_callback(request_callback, fail_info, sizeof(request_cbinfo_t));
-        free(fail_info);
-
-        //do complete callback
-        request_cbinfo_t *complete_info = (request_cbinfo_t *)malloc(sizeof(request_cbinfo_t));
-        complete_info->target_value = rqObj;
-        complete_info->callback_name = rt_strdup("complete");
-        complete_info->return_value = RT_NULL;
-        complete_info->data_value = RT_NULL;
-
-        js_send_callback(request_callback, complete_info, sizeof(request_cbinfo_t));
-        free(complete_info);
-
-        goto __exit;
-    }
+    rp->config = config;
 
     rt_thread_t read_request = rt_thread_create("requestRead", request_read_entry, rp, 1536, 20, 5);
     rt_thread_startup(read_request);
     return jerry_acquire_value(rqObj);
-
-__exit:
-    js_send_callback(close_callback, rp, sizeof(request_tdinfo_t));
-    free(rp);
-    return jerry_create_undefined();
 }
 
 int jerry_request_init(jerry_value_t obj)
@@ -362,12 +395,9 @@ int jerry_request_init(jerry_value_t obj)
 
 static jerry_value_t _jerry_request_init()
 {
-    rt_kprintf(">>>>>>>>>>>>>>>_jerry_request_init<<<<<<<<<<<<<<<<<<<<<\n");
     jerry_value_t js_requset = jerry_create_object();
-
     REGISTER_METHOD_NAME(js_requset, "request", request);
-
-    return jerry_acquire_value(js_requset);
+    return (js_requset);
 }
 
 JS_MODULE(http, _jerry_request_init)
