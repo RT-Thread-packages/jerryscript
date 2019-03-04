@@ -503,7 +503,7 @@ DECLARE_HANDLER(concat)
             return jerry_create_undefined();
         }
 
-        if (target->bufsize == 0 || source->bufsize < 0) return this_value;
+        if (target->bufsize == 0 || source->bufsize == 0) return this_value;
 
         ptr = realloc(source->buffer, source->bufsize + target->bufsize);
         if (ptr)
