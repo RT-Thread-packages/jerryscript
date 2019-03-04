@@ -444,6 +444,13 @@ void js_destroy_emitter(jerry_value_t obj)
     }
 }
 
+DECLARE_HANDLER(destroy)
+{
+    js_destroy_emitter(this_value);
+ 
+    return jerry_create_undefined();
+}
+
 static void js_event_init_prototype(void)
 {
     if (_js_emitter_prototype == 0)
@@ -457,6 +464,7 @@ static void js_event_init_prototype(void)
         REGISTER_METHOD_NAME(_js_emitter_prototype, "removeEvent", remove_event);
         REGISTER_METHOD_NAME(_js_emitter_prototype, "removeAllListeners", remove_all_listeners);
         REGISTER_METHOD_NAME(_js_emitter_prototype, "eventNames", get_event_names);
+        REGISTER_METHOD(_js_emitter_prototype, destroy);
 
         jerry_set_object_native_pointer(_js_emitter_prototype, NULL, &event_proto_type_info);
     }
