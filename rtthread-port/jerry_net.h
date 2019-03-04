@@ -1,6 +1,8 @@
 #ifndef JERRY_NET_H__
 #define JERRY_NET_H__
 
+#ifdef RT_USING_LWIP
+
 #include <rtthread.h>
 #include <unistd.h>
 #include <netdb.h>
@@ -108,5 +110,7 @@ struct close_callback_info
     jerry_value_t js_server;
     jerry_value_t js_socket;
 } typedef net_closeInfo_t;
+
+#endif
 
 #endif

@@ -118,13 +118,6 @@ DECLARE_HANDLER(send)
     return jerry_create_boolean(result);
 }
 
-DECLARE_HANDLER(destroy)
-{
-    js_destroy_emitter(this_value);
- 
-    return jerry_create_boolean(true);
-}
-
 DECLARE_HANDLER(Message)
 {
     jerry_value_t info = 0;
@@ -147,10 +140,9 @@ DECLARE_HANDLER(Message)
         return jerry_create_undefined();
     }
 
-    REGISTER_METHOD(js_message_obj, send);
-    REGISTER_METHOD(js_message_obj, destroy);
-
     js_make_emitter(js_message_obj, jerry_create_undefined());
+    
+    REGISTER_METHOD(js_message_obj, send);
 
     jerry_set_object_native_pointer(info, NULL, &js_message_info);
     js_set_property(js_message_obj, "info", info);
@@ -175,9 +167,22 @@ int js_message_init(void)
     return 0;
 }
 
-rt_bool_t js_msg_test(void)
+#ifdef RT_USING_FINSH
+#include <finsh.h>
+int js_msg_test(int argc, char** argv)
 {
-    char *data = "jerry message test!!!";
-    return js_message_send("test", (rt_uint8_t *)data, rt_strlen(data));
+    if (argc > 2)
+    {
+        rt_uint32_t cmd = atoi(argv[2]);
+        js_message_send(argv[1], (rt_uint8_t *)&cmd, 4);
+    }
+    else if (argc > 1)
+    {
+        rt_uint32_t cmd = atoi(argv[1]);
+        js_message_send("test", (rt_uint8_t *)&cmd, 4);
+    }
+    
+    return 0;
 }
-MSH_CMD_EXPORT(js_msg_test, jerry message test);
+MSH_CMD_EXPORT(js_msg_test, send msg to JS by test);
+#endif

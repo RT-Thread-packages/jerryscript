@@ -2,6 +2,8 @@
 #include "jerry_net.h"
 /* manage the pipe of socket */
 
+#ifdef RT_USING_LWIP
+
 #undef PIPE_BUFSZ
 #define PIPE_BUFSZ    512
 
@@ -1484,3 +1486,5 @@ jerry_value_t jerry_net_init()
 }
 
 JS_MODULE(net, jerry_net_init)
+
+#endif

@@ -20,14 +20,14 @@ struct mqtt_callback_info
     int return_count;
     jerry_value_t* return_value;
     char* event_name;
-}typedef mqtt_cbinfo_t;
-    
+} typedef mqtt_cbinfo_t;
+
 struct mqtt_client_info
 {
     jerry_value_t this_value;
     int subCount; //the count of topics subscribed
     MQTTClient* client;
-    
+
     struct js_callback* event_callback;
     struct js_callback* fun_callback;
     struct js_callback* close_callback;
@@ -36,10 +36,10 @@ struct mqtt_client_info
     {
         char* topic;
         jerry_value_t js_func;
-    }callbackHandler[MAX_MESSAGE_HANDLERS];
-    
+    } callbackHandler[MAX_MESSAGE_HANDLERS];
+
     rt_sem_t sem;
-}typedef mqtt_info_t;
+} typedef mqtt_info_t;
 
 
 #endif
