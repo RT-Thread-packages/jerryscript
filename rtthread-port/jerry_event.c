@@ -266,7 +266,8 @@ rt_bool_t js_emit_event(jerry_value_t obj, const char *event_name, const jerry_v
                 jerry_value_t ret = jerry_call_function(listener->func, obj, argv, argc);
                 if (jerry_value_is_error(ret))
                 {
-                    rt_kprintf("error calling listener\n");
+                    js_value_dump(obj);
+                    rt_kprintf("event [%s] calling listener error!\n", event_name);
                 }
                 jerry_release_value(ret);
                 listener = listener->next;
