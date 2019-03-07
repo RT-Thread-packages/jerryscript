@@ -13,6 +13,8 @@ extern int js_module_init(void);
 extern int js_buffer_init(void);
 extern int js_buffer_cleanup(void);
 
+static void _js_value_dump(jerry_value_t value);
+
 static rt_mutex_t _util_lock = NULL;
 static js_util_user _user_init = NULL, _user_cleanup = NULL;
 
@@ -133,12 +135,12 @@ bool object_dump_foreach(const jerry_value_t property_name,
         printf("%s : ", str);
         free(str);
     }
-    js_value_dump(property_value);
+    _js_value_dump(property_value);
 
     return true;
 }
 
-void js_value_dump(jerry_value_t value)
+static void _js_value_dump(jerry_value_t value)
 {
     if (jerry_value_is_undefined(value))
     {
@@ -189,7 +191,7 @@ void js_value_dump(jerry_value_t value)
         for (index = 0; index < jerry_get_array_length(value); index ++)
         {
             jerry_value_t item = jerry_get_property_by_index(value, index);
-            js_value_dump(item);
+            _js_value_dump(item);
             printf(", ");
             jerry_release_value(item);
         }
@@ -206,6 +208,12 @@ void js_value_dump(jerry_value_t value)
     {
         printf("what?");
     }
+}
+
+void js_value_dump(jerry_value_t value)
+{
+    _js_value_dump(value);
+    printf("\n");
 }
 
 int js_read_file(const char* filename, char **script)
