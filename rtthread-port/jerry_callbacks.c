@@ -128,7 +128,11 @@ rt_bool_t js_send_callback(struct js_callback *callback, const void *args, uint3
     if (jmc)
     {
         jmc->callback = callback;
-        jmc->args = (void *)args;
+        jmc->args = rt_malloc(size);
+        if (jmc->args && args)
+        {
+            memcpy(jmc->args, args, size);
+        }
         jmc->size = size;
 
         if (_js_mq_func)
@@ -138,6 +142,7 @@ rt_bool_t js_send_callback(struct js_callback *callback, const void *args, uint3
 
         if (ret == RT_FALSE)
         {
+            rt_free(jmc->args);
             rt_free(jmc);
         }
     }
