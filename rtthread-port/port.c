@@ -99,11 +99,11 @@ void jerry_port_log (jerry_log_level_t level, const char *format, ...)
      * large excluding the terminating null byte. If the output string
      * would be larger than the rt_log_buf, we have to adjust the output
      * length. */
-    length = vsnprintf(rt_log_buf, sizeof(rt_log_buf) - 1, format, args);
+    length = rt_vsnprintf(rt_log_buf, sizeof(rt_log_buf) - 1, format, args);
     if (length > RT_JS_CONSOLEBUF_SIZE - 1)
         length = RT_JS_CONSOLEBUF_SIZE - 1;
 #ifdef RT_USING_DEVICE
-    printf("%s", rt_log_buf);
+    rt_kprintf("%s", rt_log_buf);
 #else
     rt_hw_console_output(rt_log_buf);
 #endif
