@@ -112,7 +112,19 @@ static void scanEvent_handler(int event, struct rt_wlan_buff *buff, void *parame
 
                 if (info->ssid)
                 {
-                    connect_wifi(info, info->ssid, info->password, info->bssid);
+                    if (connect_wifi(info, info->ssid, info->password, info->bssid) == -2)
+                    {
+                        struct event_callback_info cb_info;
+
+                        cb_info.event_name = strdup("ConnectEvent");
+                        cb_info.js_target = js_wifi;
+                        cb_info.js_return = jerry_create_null();
+
+                        if (!js_send_callback(info->event_callback, &cb_info, sizeof(struct event_callback_info)))
+                        {
+                            jerry_release_value(js_return);
+                        }
+                    }
 
                     free(info->ssid);
                     free(info->password);
@@ -506,7 +518,42 @@ DECLARE_HANDLER(getConnectedWifi)
     return jerry_create_null();
 }
 
-jerry_value_t jerry_wifi_init()
+DECLARE_HANDLER(destroy)
+{
+    struct wifi_info *info= RT_NULL;
+    jerry_value_t js_info = js_get_property(this_value, "info");
+
+    if (js_info)
+    {
+        jerry_get_object_native_pointer(js_info, (void **)&info, NULL);
+        jerry_set_object_native_pointer(js_info, NULL, NULL);
+    }
+    jerry_release_value(js_info);
+
+    rt_wlan_unregister_event_handler(RT_WLAN_EVT_SCAN_DONE);
+    rt_wlan_unregister_event_handler(RT_WLAN_EVT_STA_CONNECTED);
+    rt_wlan_unregister_event_handler(RT_WLAN_EVT_STA_CONNECTED_FAIL);
+    rt_wlan_unregister_event_handler(RT_WLAN_EVT_READY);
+    rt_wlan_unregister_event_handler(RT_WLAN_EVT_STA_DISCONNECTED);
+
+    js_destroy_emitter(this_value);
+
+    if (info)
+    {
+        if (info->wifi_list.info)
+            free(info->wifi_list.info);
+
+        if (info->event_callback)
+            js_remove_callback(info->event_callback);
+
+        if (info)
+            free(info);
+    }
+
+    return jerry_create_undefined();
+}
+
+DECLARE_HANDLER(createWifi)
 {
     struct wifi_info* wifi_info = (struct wifi_info*)malloc(sizeof(struct wifi_info));
 
@@ -536,6 +583,7 @@ jerry_value_t jerry_wifi_init()
             REGISTER_METHOD_NAME(js_wifi, "onScanEvent", onScanEvent);
             REGISTER_METHOD_NAME(js_wifi, "onConnectEvent", onConnectEvent);
             REGISTER_METHOD_NAME(js_wifi, "onNetworkEvent", onNetworkEvent);
+            REGISTER_METHOD(js_wifi, destroy);
 
             register_handler(js_wifi);
 
@@ -553,6 +601,11 @@ jerry_value_t jerry_wifi_init()
     return jerry_create_undefined();
 }
 
-JS_MODULE(wifi, jerry_wifi_init)
+int jerry_wifi_init(jerry_value_t obj)
+{
+    REGISTER_METHOD(obj, createWifi);
+
+    return 0;
+}
 
 #endif
