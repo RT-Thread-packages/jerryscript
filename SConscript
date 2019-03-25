@@ -80,7 +80,6 @@ if GetDepend('PKG_CONFIG_DISABLE_ES2015'):
 group = DefineGroup('JerryScript', src, depend = ['PKG_USING_JERRYSCRIPT'], CPPPATH = CPPPATH, 
     CPPDEFINES = CPPDEFINES, LOCAL_CCFLAGS = LOCAL_CCFLAGS)
 
-if GetDepend('PKG_USING_JERRYSCRIPT'):
-    group = group + SConscript(os.path.join('rtthread-port', 'SConscript'))
+group = group + SConscript(os.path.join('rtthread-port', 'SConscript'))
 
 Return('group')
