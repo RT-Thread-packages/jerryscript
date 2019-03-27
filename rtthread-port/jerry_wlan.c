@@ -328,13 +328,11 @@ DECLARE_HANDLER(openWifi)
     if (args_cnt >= 1)
     {
         char *name = RT_NULL;
-        jerry_value_t js_name =  js_get_property(args[0], "name");
 
-        if (jerry_value_is_string(js_name))
+        if (jerry_value_is_string(args[0]))
         {
-            name = js_value_to_string(js_name);
+            name = js_value_to_string(args[0]);
         }
-        jerry_release_value(js_name);
 
         if (name)
         {
