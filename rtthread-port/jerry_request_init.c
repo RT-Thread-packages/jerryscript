@@ -4,7 +4,6 @@
 void request_callback_func(const void *args, uint32_t size)
 {
     request_cbinfo_t *cb_info = (request_cbinfo_t *)args;
-
     if (cb_info->return_value != RT_NULL)
     {
         js_emit_event(cb_info->target_value, cb_info->callback_name, &cb_info->return_value, 1);
@@ -21,7 +20,10 @@ void request_callback_func(const void *args, uint32_t size)
     {
         jerry_release_value(cb_info->data_value);
     }
-
+    if (cb_info->callback_name != RT_NULL)
+    {
+        free(cb_info->callback_name);
+    }
     free(cb_info);
 }
 
@@ -80,8 +82,8 @@ void request_create_header(struct webclient_session *session, jerry_value_t head
     int enter_index = 0;
     int colon_index = 0;
     int per_enter_index = -1;
-    char header_type[64];
-    char header_info[128];
+    char header_type[256];
+    char header_info[256];
 
     for (int i = 0 ; i < session->header->length ; i++)
     {
@@ -278,6 +280,7 @@ void request_read_entry(void *p)
 __exit:
     //create a callback function to free manager and close webClient session
     js_send_callback(rp->close_callback, rp, sizeof(request_cbinfo_t));
+    free(rp);
 }
 
 void requeset_add_event_listener(jerry_value_t js_target, jerry_value_t requestObj)
@@ -381,8 +384,7 @@ DECLARE_HANDLER(request)
     rp->close_callback = close_callback;
     rp->target_value = rqObj;
     rp->config = config;
-
-    rt_thread_t read_request = rt_thread_create("requestRead", request_read_entry, rp, 1536, 20, 5);
+    rt_thread_t read_request = rt_thread_create("requestRead", request_read_entry, rp, 4096, 20, 5);
     rt_thread_startup(read_request);
     return jerry_acquire_value(rqObj);
 }
