@@ -6,6 +6,8 @@
 #define PIPE_BUFSZ    512
 static bool hasClient = false;
 
+extern int MQTT_CMD(MQTTClient *c, const char *cmd);
+
 void mqtt_event_callback(const void *args, uint32_t size)
 {
     mqtt_cbinfo_t *cb_info = (mqtt_cbinfo_t*)args;
@@ -34,6 +36,7 @@ void mqtt_free_callback(const void *args, uint32_t size)
 {
 
 }
+
 void mqtt_func_callback(const void *args, uint32_t size)
 {
     mqtt_cbinfo_t *cb_info = (mqtt_cbinfo_t *)args;
@@ -148,7 +151,7 @@ void mqtt_client_free_callback(void *native_p)
 
     if(mqtt_info->client->isconnected == 1)
     {
-        MQTT_CMD(mqtt_info->client,"DISCONNECT");
+        MQTT_CMD(mqtt_info->client, "DISCONNECT");
     }
 
     if(mqtt_info->sem)
@@ -234,6 +237,7 @@ DECLARE_HANDLER(connect)
 
     return jerry_create_undefined();
 }
+
 DECLARE_HANDLER(publish)
 {
     mqtt_info_t *mqtt_info = RT_NULL;
@@ -359,6 +363,7 @@ DECLARE_HANDLER(publish)
 _exit:
     return jerry_create_undefined();
 }
+
 DECLARE_HANDLER(subscribe)
 {
     mqtt_info_t *mqtt_info = RT_NULL;
@@ -555,6 +560,7 @@ DECLARE_HANDLER(unsubscribe)
 _exit:
     return jerry_create_undefined();
 }
+
 DECLARE_HANDLER(end)
 {
     mqtt_info_t *mqtt_info = RT_NULL;
@@ -592,7 +598,7 @@ DECLARE_HANDLER(end)
         break;
     }
 
-    if(mqtt_info->client->isconnected == 1)
+    // if(mqtt_info->client->isconnected == 1)
     {
         MQTT_CMD(mqtt_info->client,"DISCONNECT");
 
@@ -613,6 +619,7 @@ DECLARE_HANDLER(end)
 _exit:
     return jerry_create_undefined();
 }
+
 DECLARE_HANDLER(reconnect)
 {
     mqtt_info_t *mqtt_info = RT_NULL;
@@ -629,7 +636,6 @@ DECLARE_HANDLER(reconnect)
 
     return jerry_create_undefined();
 }
-
 
 static jerry_value_t mqtt_create_client(int arg_cnt,const jerry_value_t* args)
 {

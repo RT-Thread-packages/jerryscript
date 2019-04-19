@@ -238,6 +238,7 @@ int js_read_file(const char* filename, char **script)
     {
         rt_free(*script);
         *script = RT_NULL;
+        printf("open %s failed!\n", filename);
         return 0;
     }
 
@@ -246,7 +247,7 @@ int js_read_file(const char* filename, char **script)
         length = 0;
         rt_free(*script);
         *script = RT_NULL;
-        printf("read failed!\n");
+        printf("read %s failed!\n", filename);
     }
     fclose(fp);
 
