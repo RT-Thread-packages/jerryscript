@@ -476,40 +476,43 @@ DECLARE_HANDLER(getConnectedWifi)
 {
     struct rt_wlan_info info;
 
-    rt_err_t ret = rt_wlan_get_info(&info);
-    if (ret == RT_EOK)
+    if (rt_wlan_is_connected())
     {
-        jerry_value_t js_ssid, js_strength, js_bssid, js_secure;
-        jerry_value_t js_wifi_info = jerry_create_object();
-        if (js_wifi_info)
+        rt_err_t ret = rt_wlan_get_info(&info);
+        if (ret == RT_EOK)
         {
-            char bssid[32];
+            jerry_value_t js_ssid, js_strength, js_bssid, js_secure;
+            jerry_value_t js_wifi_info = jerry_create_object();
+            if (js_wifi_info)
+            {
+                char bssid[32];
 
-            js_ssid = jerry_create_string(((const jerry_char_t*)info.ssid.val));
-            js_set_property(js_wifi_info, "ssid", js_ssid);
-            jerry_release_value(js_ssid);
+                js_ssid = jerry_create_string(((const jerry_char_t*)info.ssid.val));
+                js_set_property(js_wifi_info, "ssid", js_ssid);
+                jerry_release_value(js_ssid);
 
-            js_strength = jerry_create_number(info.rssi);
-            js_set_property(js_wifi_info, "strength", js_strength);
-            jerry_release_value(js_strength);
+                js_strength = jerry_create_number(info.rssi);
+                js_set_property(js_wifi_info, "strength", js_strength);
+                jerry_release_value(js_strength);
 
-            rt_sprintf(bssid, "%02x:%02x:%02x:%02x:%02x:%02x",
-                       info.bssid[0],
-                       info.bssid[1],
-                       info.bssid[2],
-                       info.bssid[3],
-                       info.bssid[4],
-                       info.bssid[5]);
+                rt_sprintf(bssid, "%02x:%02x:%02x:%02x:%02x:%02x",
+                           info.bssid[0],
+                           info.bssid[1],
+                           info.bssid[2],
+                           info.bssid[3],
+                           info.bssid[4],
+                           info.bssid[5]);
 
-            js_bssid = jerry_create_string(((const jerry_char_t*)bssid));
-            js_set_property(js_wifi_info, "bssid", js_bssid);
-            jerry_release_value(js_bssid);
+                js_bssid = jerry_create_string(((const jerry_char_t*)bssid));
+                js_set_property(js_wifi_info, "bssid", js_bssid);
+                jerry_release_value(js_bssid);
 
-            js_secure = jerry_create_boolean(info.security);
-            js_set_property(js_wifi_info, "secure", js_secure);
-            jerry_release_value(js_secure);
+                js_secure = jerry_create_boolean(info.security);
+                js_set_property(js_wifi_info, "secure", js_secure);
+                jerry_release_value(js_secure);
 
-            return js_wifi_info;
+                return js_wifi_info;
+            }
         }
     }
 
