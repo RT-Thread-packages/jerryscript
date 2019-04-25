@@ -165,10 +165,12 @@ static void remove_event(struct js_emitter *emitter, struct js_event *event)
     }
     else
     {
-        while (_event->next == event)
+        while (_event->next != event)
         {
-            _event->next = event->next;
+            _event = _event->next;
         }
+
+        _event->next = event->next;
     }
 
     while (listener != NULL)
@@ -211,8 +213,6 @@ void js_add_event_listener(jerry_value_t obj, const char *event_name, jerry_valu
         listener = (struct js_listener *)rt_malloc(sizeof(struct js_listener));
         if (!listener)
         {
-            rt_free(event->name);
-            rt_free(event);
             return;
         }
 
