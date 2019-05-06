@@ -36,6 +36,8 @@ extern "C"
 
 typedef void(*js_util_user)(void);
 
+bool is_utf8_string(const void* str, int size);
+
 void js_set_property(const jerry_value_t obj, const char *name,
                      const jerry_value_t prop);
 void js_set_string_property(const jerry_value_t obj, const char *name,
@@ -50,6 +52,7 @@ jerry_value_t js_call_func_obj(const jerry_value_t func_obj_val, const jerry_val
 jerry_value_t js_call_function(const jerry_value_t obj, const char *name,
                                const jerry_value_t args[], jerry_size_t args_cnt);
 
+jerry_value_t js_string_to_value(const char *value);
 char *js_value_to_string(const jerry_value_t value);
 
 void js_value_dump(const jerry_value_t value);

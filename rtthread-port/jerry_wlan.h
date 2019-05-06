@@ -16,11 +16,18 @@
 #include <jerry_buffer.h>
 #include <wlan_mgnt.h>
 
+struct wifi_ssid
+{
+    char *ssid;
+    int index;
+};
+
 struct wifi_info
 {
     jerry_value_t this_value;
     struct js_callback *event_callback;
     struct rt_wlan_scan_result wifi_list;
+    struct wifi_ssid *gb_ssid;
     char *ssid;
     char *password;
     char *bssid;
