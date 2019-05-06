@@ -3,6 +3,13 @@
 
 #ifdef RT_USING_WIFI
 
+#include <rtgui/gb2312.h>
+
+#define DBG_ENABLE
+#define DBG_SECTION_NAME    "JS WLAN"
+#define DBG_LEVEL           DBG_LOG
+#include <rtdbg.h>
+
 static void get_wifi_info(void **info, jerry_value_t js_target)
 {
     jerry_value_t js_info = js_get_property(js_target, "info");
@@ -55,20 +62,21 @@ static int connect_wifi(struct wifi_info *info, char *ssid, char *password, char
 
                 if (bssid)
                 {
-                    if (rt_strcmp((const char *)ssid, (const char *)info->wifi_list.info[i].ssid.val) == 0 && rt_strcmp((const char *)bssid, (const char *)buffer) == 0)
+                    if (rt_strcmp((const char *)bssid, (const char *)buffer) != 0)
                     {
-                        ret = rt_wlan_connect_adv(&(info->wifi_list.info[i]), password);
-                        break;
+                        continue;
                     }
                 }
-                else
-                {
 
-                    if (rt_strcmp((const char *)ssid, (const char *)info->wifi_list.info[i].ssid.val) == 0)
-                    {
-                        ret = rt_wlan_connect_adv(&(info->wifi_list.info[i]), password);
-                        break;
-                    }
+                if (rt_strcmp((const char *)ssid, (const char *)info->wifi_list.info[i].ssid.val) == 0)
+                {
+                    ret = rt_wlan_connect_adv(&(info->wifi_list.info[i]), password);
+                    break;
+                }
+                else if (info->gb_ssid[i].ssid && rt_strcmp((const char *)ssid, (const char *)info->gb_ssid[i].ssid) == 0)
+                {
+                    ret = rt_wlan_connect_adv(&(info->wifi_list.info[info->gb_ssid[i].index]), password);
+                    break;
                 }
             }
 
@@ -79,7 +87,7 @@ static int connect_wifi(struct wifi_info *info, char *ssid, char *password, char
 
             if (i >= info->wifi_list.num)
             {
-                rt_kprintf("There is no ap in the scanned wifi : %s\n", ssid);
+                LOG_W("The scanned wifi is not included %s", ssid);
                 ret = -2;
             }
         }
@@ -96,19 +104,51 @@ static void scanEvent_handler(int event, struct rt_wlan_buff *buff, void *parame
     get_wifi_info((void**)&info, js_wifi);
     if (info)
     {
+        int i;
         jerry_value_t js_return = 0;
         struct rt_wlan_scan_result *temp_result = (struct rt_wlan_scan_result*)buff->data;
 
         if (temp_result->num > 0)
         {
             if (info->wifi_list.info)
+            {
                 free(info->wifi_list.info);
+            }
+
+            if (info->gb_ssid)
+            {
+                for (i = 0; i < info->wifi_list.num; i++)
+                {
+                    if (info->gb_ssid[i].ssid)
+                    {
+                        rt_free(info->gb_ssid[i].ssid);
+                    }
+                }
+                free(info->gb_ssid);
+            }
 
             info->wifi_list.num = temp_result->num;
             info->wifi_list.info = (struct rt_wlan_info*)malloc(sizeof(struct rt_wlan_info) * info->wifi_list.num);
+            info->gb_ssid = (struct wifi_ssid*)malloc(sizeof(struct wifi_ssid) * info->wifi_list.num);
             if (info->wifi_list.info)
             {
                 memcpy(info->wifi_list.info, temp_result->info, sizeof(struct rt_wlan_info) * info->wifi_list.num);
+
+                if (info->gb_ssid)
+                {
+                    int j = 0;
+                    memset(info->gb_ssid, 0x00, sizeof(struct wifi_ssid) * info->wifi_list.num);
+
+                    for (i = 0; i < info->wifi_list.num; i++)
+                    {
+                        if (!is_utf8_string((void *)info->wifi_list.info[i].ssid.val, strlen((const char *)info->wifi_list.info[i].ssid.val)))
+                        {
+                            info->gb_ssid[j].index = i;
+                            Gb2312ToUtf8((char *)info->wifi_list.info[i].ssid.val, strlen((const char *)info->wifi_list.info[i].ssid.val), &info->gb_ssid[j].ssid);
+                            j ++;
+                        }
+                    }
+                }
 
                 if (info->ssid)
                 {
@@ -142,12 +182,12 @@ static void scanEvent_handler(int event, struct rt_wlan_buff *buff, void *parame
 
                     js_return = jerry_create_array(info->wifi_list.num);
 
-                    for (int i = 0; i < info->wifi_list.num; i++)
+                    for (i = 0; i < info->wifi_list.num; i++)
                     {
                         struct rt_wlan_info *wifi_info = &(info->wifi_list.info[i]);
                         jerry_value_t js_wifi_info = jerry_create_object();
 
-                        js_ssid = jerry_create_string(((const jerry_char_t*)wifi_info->ssid.val));
+                        js_ssid = js_string_to_value((const char*)wifi_info->ssid.val);
                         js_set_property(js_wifi_info, "ssid", js_ssid);
                         jerry_release_value(js_ssid);
 
@@ -163,7 +203,7 @@ static void scanEvent_handler(int event, struct rt_wlan_buff *buff, void *parame
                                    wifi_info->bssid[4],
                                    wifi_info->bssid[5]);
 
-                        js_bssid = jerry_create_string(((const jerry_char_t*)buffer));
+                        js_bssid = jerry_create_string((const jerry_char_t*)buffer);
                         js_set_property(js_wifi_info, "bssid", js_bssid);
                         jerry_release_value(js_bssid);
 
@@ -212,7 +252,7 @@ static void connectEvent_handler(int event, struct rt_wlan_buff *buff, void *par
             jerry_value_t js_ssid, js_strength, js_bssid, js_secure;
             js_return = jerry_create_object();
 
-            js_ssid = jerry_create_string(((const jerry_char_t*)wifi_info->ssid.val));
+            js_ssid = js_string_to_value((const char*)wifi_info->ssid.val);
             js_set_property(js_return, "ssid", js_ssid);
             jerry_release_value(js_ssid);
 
@@ -228,7 +268,7 @@ static void connectEvent_handler(int event, struct rt_wlan_buff *buff, void *par
                        wifi_info->bssid[4],
                        wifi_info->bssid[5]);
 
-            js_bssid = jerry_create_string(((const jerry_char_t*)buffer));
+            js_bssid = jerry_create_string((const jerry_char_t*)buffer);
             js_set_property(js_return, "bssid", js_bssid);
             jerry_release_value(js_bssid);
 
@@ -487,7 +527,7 @@ DECLARE_HANDLER(getConnectedWifi)
             {
                 char bssid[32];
 
-                js_ssid = jerry_create_string(((const jerry_char_t*)info.ssid.val));
+                js_ssid = js_string_to_value((const char*)info.ssid.val);
                 js_set_property(js_wifi_info, "ssid", js_ssid);
                 jerry_release_value(js_ssid);
 
@@ -503,7 +543,7 @@ DECLARE_HANDLER(getConnectedWifi)
                            info.bssid[4],
                            info.bssid[5]);
 
-                js_bssid = jerry_create_string(((const jerry_char_t*)bssid));
+                js_bssid = jerry_create_string((const jerry_char_t*)bssid);
                 js_set_property(js_wifi_info, "bssid", js_bssid);
                 jerry_release_value(js_bssid);
 

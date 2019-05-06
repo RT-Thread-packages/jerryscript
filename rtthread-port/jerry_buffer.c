@@ -24,63 +24,6 @@
 static jerry_value_t jerry_buffer_prototype;
 js_buffer_t *jerry_buffer_find(const jerry_value_t obj);
 
-bool is_utf8_string(const void* str, int size)
-{
-    bool ret = true;
-    unsigned char* start = (unsigned char*)str;
-    unsigned char* end = (unsigned char*)str + size;
-
-    while (start < end)
-    {
-        if (*start < 0x80) 				// (10000000): 值小于0x80的为ASCII字符    
-        {
-            start++;
-        }
-        else if (*start < (0xC0)) 		// (11000000): 值介于0x80与0xC0之间的为无效UTF-8字符    
-        {
-            ret = false;
-            break;
-        }
-        else if (*start < (0xE0)) 		// (11100000): 此范围内为2字节UTF-8字符    
-        {
-            if (start >= end - 1)
-            {
-                break;
-            }
-
-            if ((start[1] & (0xC0)) != 0x80)
-            {
-                ret = false;
-                break;
-            }
-
-            start += 2;
-        }
-        else if (*start < (0xF0)) 		// (11110000): 此范围内为3字节UTF-8字符    
-        {
-            if (start >= end - 2)
-            {
-                break;
-            }
-
-            if ((start[1] & (0xC0)) != 0x80 || (start[2] & (0xC0)) != 0x80)
-            {
-                ret = false;
-                break;
-            }
-
-            start += 3;
-        }
-        else
-        {
-            ret = false;
-            break;
-        }
-    }
-
-    return ret;
-}
-
 static void jerry_buffer_callback_free(void *handle)
 {
     js_buffer_t *item = (js_buffer_t *)handle;
