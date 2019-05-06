@@ -7,6 +7,7 @@
 #include "jerry_util.h"
 #include <jerry_event.h>
 #include <jerry_message.h>
+#include <rtgui/gb2312.h>
 
 extern int js_console_init(void);
 extern int js_module_init(void);
@@ -17,6 +18,63 @@ static void _js_value_dump(jerry_value_t value);
 
 static rt_mutex_t _util_lock = NULL;
 static js_util_user _user_init = NULL, _user_cleanup = NULL;
+
+bool is_utf8_string(const void* str, int size)
+{
+    bool ret = true;
+    unsigned char* start = (unsigned char*)str;
+    unsigned char* end = (unsigned char*)str + size;
+
+    while (start < end)
+    {
+        if (*start < 0x80) 				// (10000000): 值小于0x80的为ASCII字符    
+        {
+            start++;
+        }
+        else if (*start < (0xC0)) 		// (11000000): 值介于0x80与0xC0之间的为无效UTF-8字符    
+        {
+            ret = false;
+            break;
+        }
+        else if (*start < (0xE0)) 		// (11100000): 此范围内为2字节UTF-8字符    
+        {
+            if (start >= end - 1)
+            {
+                break;
+            }
+
+            if ((start[1] & (0xC0)) != 0x80)
+            {
+                ret = false;
+                break;
+            }
+
+            start += 2;
+        }
+        else if (*start < (0xF0)) 		// (11110000): 此范围内为3字节UTF-8字符    
+        {
+            if (start >= end - 2)
+            {
+                break;
+            }
+
+            if ((start[1] & (0xC0)) != 0x80 || (start[2] & (0xC0)) != 0x80)
+            {
+                ret = false;
+                break;
+            }
+
+            start += 3;
+        }
+        else
+        {
+            ret = false;
+            break;
+        }
+    }
+
+    return ret;
+}
 
 void js_set_property(const jerry_value_t obj, const char *name,
                      const jerry_value_t prop)
@@ -57,6 +115,27 @@ void js_add_function(const jerry_value_t obj, const char *name,
 
     jerry_release_value(str);
     jerry_release_value(jfunc);
+}
+
+jerry_value_t js_string_to_value(const char *value)
+{
+    jerry_value_t str = 0;
+
+    if (is_utf8_string(value, strlen(value)))
+    {
+        str = jerry_create_string((const jerry_char_t *)value);
+    }
+    else
+    {
+        char *utf8 = NULL;
+		
+        Gb2312ToUtf8((char *)value, strlen(value), &utf8);
+        str = jerry_create_string((const jerry_char_t *)utf8);
+		
+        rt_free(utf8);
+    }
+    
+    return str;
 }
 
 char *js_value_to_string(const jerry_value_t value)
