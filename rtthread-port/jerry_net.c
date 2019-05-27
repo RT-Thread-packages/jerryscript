@@ -252,6 +252,13 @@ void net_socket_callback_free(const void *args, uint32_t size)
 
     net_writeInfo_t write_info;
     memset(&write_info, 0, sizeof(net_writeInfo_t));
+
+    if (js_socket_info->connect_thread != RT_NULL)
+    {
+        rt_thread_delete(js_socket_info->connect_thread);
+        js_socket_info->connect_thread = RT_NULL;
+    }
+
     if (js_socket_info->readData_thread != RT_NULL)
     {
         /*Tell readThread to stop reading*/
@@ -623,7 +630,6 @@ int net_socket_updateProperty(jerry_value_t js_socket)
     struct socket_info *js_socket_info = RT_NULL;
     get_net_info((void **)&js_socket_info, js_socket);
 
-    rt_kprintf("js_socket_info->socket_id  : %d\n", js_socket_info->socket_id);
     if (js_socket_info->socket_id < 0)
     {
         return 0;
@@ -665,6 +671,22 @@ int net_socket_updateProperty(jerry_value_t js_socket)
     jerry_release_value(js_localPort);
 
     return 1;
+}
+
+void net_socket_connect_entry(void *connect_info)
+{
+	net_connectInfo_t* info = (net_connectInfo_t*)connect_info;
+	int ret = connect(info->socket_id, (struct sockaddr *)info->socket_fd, sizeof(struct sockaddr));
+	if (ret >= 0)
+	{
+	    if (net_socket_updateProperty(info->js_socket))
+	    {
+	        net_socket_startRead(info->js_socket);
+	    }
+	}
+
+	rt_free(info->socket_fd);
+	rt_free(info);
 }
 
 DECLARE_HANDLER(socket_connect)
@@ -754,36 +776,39 @@ DECLARE_HANDLER(socket_connect)
     }
     else
     {
-        goto __isConnected;
+        if (net_socket_updateProperty(this_value))
+        {
+            net_socket_startRead(this_value);
+        }
     }
 
     /*read to connect*/
     if (port > 0)
     {
-        struct sockaddr_in socket_fd;
+        struct sockaddr_in *socket_fd = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
+        memset(socket_fd,0,sizeof(struct sockaddr_in));
 
-        socket_fd.sin_family = AF_INET;
+        socket_fd->sin_family = AF_INET;
 
 #if LWIP_IPV6
         if (family == 6)
-            socket_fd.sin_family = AF_INET6;
+            socket_fd->sin_family = AF_INET6;
 #endif
 
         struct hostent *socket_host;
         socket_host = gethostbyname(host);
-        socket_fd.sin_addr = *((struct in_addr *)socket_host->h_addr);
-        socket_fd.sin_port = htons(port);
-        rt_memset(&(socket_fd.sin_zero), 0, sizeof(socket_fd.sin_zero));
+        socket_fd->sin_addr = *((struct in_addr *)socket_host->h_addr);
+        socket_fd->sin_port = htons(port);
+        rt_memset(&(socket_fd->sin_zero), 0, sizeof(socket_fd->sin_zero));
 
-        int ret = connect(js_socket_info->socket_id, (struct sockaddr *)&socket_fd, sizeof(struct sockaddr));
-        if (ret >= 0)
-        {
-__isConnected:
-            if (net_socket_updateProperty(this_value))
-            {
-                net_socket_startRead(this_value);
-            }
-        }
+        net_connectInfo_t* connect_info = (net_connectInfo_t*)malloc(sizeof(net_connectInfo_t));
+        memset(connect_info,0 , sizeof(net_connectInfo_t));
+
+        connect_info->socket_fd = socket_fd;
+        connect_info->socket_id = js_socket_info->socket_id;
+        connect_info->js_socket = this_value;
+        js_socket_info->connect_thread = rt_thread_create("socket_connect", net_socket_connect_entry, connect_info, 1024, 20, 5);
+        rt_thread_startup(js_socket_info->connect_thread);
     }
     else
     {
@@ -795,13 +820,12 @@ __isConnected:
     return jerry_acquire_value(this_value);
 }
 
-DECLARE_HANDLER(socket_destory)
+DECLARE_HANDLER(socket_destroy)
 {
     /*get socket_info*/
     struct socket_info *js_socket_info = RT_NULL;
     get_net_info((void **)&js_socket_info, this_value);
 
-    rt_kprintf("socket_destory >> js_socket_info->socket_id  : %d\n", js_socket_info->socket_id);
     if (js_socket_info->socket_id == -1)
     {
         return jerry_create_undefined();
@@ -833,18 +857,18 @@ DECLARE_HANDLER(socket_end)
         return jerry_create_undefined();
     }
 
-    /*get wirte andy destory function*/
+    /*get wirte andy destroy function*/
     jerry_value_t js_socket_write = js_get_property(this_value, "write");
-    jerry_value_t js_socket_destory = js_get_property(this_value, "destory");
+    jerry_value_t js_socket_destroy = js_get_property(this_value, "destroy");
 
-    if (jerry_value_is_function(js_socket_write) && jerry_value_is_function(js_socket_destory))
+    if (jerry_value_is_function(js_socket_write) && jerry_value_is_function(js_socket_destroy))
     {
         jerry_call_function(js_socket_write, this_value, args, args_cnt);
-        jerry_call_function(js_socket_destory, this_value, NULL, 0);
+        jerry_call_function(js_socket_destroy, this_value, NULL, 0);
     }
 
     jerry_release_value(js_socket_write);
-    jerry_release_value(js_socket_destory);
+    jerry_release_value(js_socket_destroy);
     return this_value;
 }
 
@@ -977,7 +1001,7 @@ jerry_value_t create_js_socket()
     js_socket_info->this_value = js_socket;
     /*set method*/
     REGISTER_METHOD_NAME(js_socket, "connect", socket_connect);
-    REGISTER_METHOD_NAME(js_socket, "destory", socket_destory);
+    REGISTER_METHOD_NAME(js_socket, "destroy", socket_destroy);
     REGISTER_METHOD_NAME(js_socket, "end", socket_end);
     REGISTER_METHOD_NAME(js_socket, "pause", socket_pause);
     REGISTER_METHOD_NAME(js_socket, "resume", socket_resume);
