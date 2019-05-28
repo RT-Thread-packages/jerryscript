@@ -170,13 +170,7 @@ int js_msg_test(int argc, char** argv)
 {
     if (argc > 2)
     {
-        rt_uint32_t cmd = atoi(argv[2]);
-        js_message_send(argv[1], (rt_uint8_t *)&cmd, 4);
-    }
-    else if (argc > 1)
-    {
-        rt_uint32_t cmd = atoi(argv[1]);
-        js_message_send("test", (rt_uint8_t *)&cmd, 4);
+        js_message_send(argv[1], (rt_uint8_t *)argv[2], rt_strlen(argv[2]));
     }
     
     return 0;
