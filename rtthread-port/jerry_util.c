@@ -27,16 +27,16 @@ bool is_utf8_string(const void* str, int size)
 
     while (start < end)
     {
-        if (*start < 0x80) 				// (10000000): 值小于0x80的为ASCII字符    
+        if (*start < 0x80) 				// (10000000): 值小于0x80的为ASCII字符
         {
             start++;
         }
-        else if (*start < (0xC0)) 		// (11000000): 值介于0x80与0xC0之间的为无效UTF-8字符    
+        else if (*start < (0xC0)) 		// (11000000): 值介于0x80与0xC0之间的为无效UTF-8字符
         {
             ret = false;
             break;
         }
-        else if (*start < (0xE0)) 		// (11100000): 此范围内为2字节UTF-8字符    
+        else if (*start < (0xE0)) 		// (11100000): 此范围内为2字节UTF-8字符
         {
             if (start >= end - 1)
             {
@@ -51,7 +51,7 @@ bool is_utf8_string(const void* str, int size)
 
             start += 2;
         }
-        else if (*start < (0xF0)) 		// (11110000): 此范围内为3字节UTF-8字符    
+        else if (*start < (0xF0)) 		// (11110000): 此范围内为3字节UTF-8字符
         {
             if (start >= end - 2)
             {
@@ -105,6 +105,16 @@ void js_set_string_property(const jerry_value_t obj, const char *name,
     jerry_release_value (value_str);
 }
 
+void js_set_boolean_property(const jerry_value_t obj, const char *name,
+                             bool value)
+{
+    jerry_value_t str = jerry_create_string((const jerry_char_t *)name);
+    jerry_value_t value_bool = jerry_create_boolean(value);
+    jerry_set_property(obj, str, value_bool);
+    jerry_release_value(str);
+    jerry_release_value(value_bool);
+}
+
 void js_add_function(const jerry_value_t obj, const char *name,
                      jerry_external_handler_t func)
 {
@@ -128,13 +138,13 @@ jerry_value_t js_string_to_value(const char *value)
     else
     {
         char *utf8 = NULL;
-		
+
         Gb2312ToUtf8((char *)value, strlen(value), &utf8);
         str = jerry_create_string((const jerry_char_t *)utf8);
-		
+
         rt_free(utf8);
     }
-    
+
     return str;
 }
 
