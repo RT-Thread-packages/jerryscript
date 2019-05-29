@@ -40,11 +40,14 @@ struct socket_info
     bool writable ;
     bool readable ;
 
+    bool isClosing;
+
     struct js_callback *event_callback;
     struct js_callback *fun_callback;
     struct js_callback *close_callback;
 
     rt_thread_t readData_thread;
+    rt_thread_t connect_thread;
 
     jerry_value_t js_server;
     jerry_value_t this_value;
@@ -75,6 +78,13 @@ struct read_thread_info
     jerry_value_t js_socket;
 
 } typedef net_readInfo_t;
+
+struct connect_info
+{
+    struct sockaddr_in *socket_fd;
+    int socket_id;
+    jerry_value_t js_socket;
+} typedef net_connectInfo_t;
 
 struct listen_thread_info
 {
