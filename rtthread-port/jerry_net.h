@@ -40,6 +40,8 @@ struct socket_info
     bool writable ;
     bool readable ;
 
+    bool isClosing;
+
     struct js_callback *event_callback;
     struct js_callback *fun_callback;
     struct js_callback *close_callback;
