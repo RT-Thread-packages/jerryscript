@@ -42,6 +42,8 @@ void js_set_property(const jerry_value_t obj, const char *name,
                      const jerry_value_t prop);
 void js_set_string_property(const jerry_value_t obj, const char *name,
                             char* value);
+void js_set_boolean_property(const jerry_value_t obj, const char *name,
+                             bool value);
 
 jerry_value_t js_get_property(const jerry_value_t obj, const char *name);
 
