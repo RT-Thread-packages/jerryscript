@@ -8,7 +8,8 @@
 
 DECLARE_HANDLER(dir)
 {
-    for (int index = 0; index < args_cnt; index ++)
+	int index;
+    for (index = 0; index < args_cnt; index ++)
     {
         js_value_dump(args[index]);
         printf("\n");

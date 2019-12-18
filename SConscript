@@ -62,6 +62,8 @@ LOCAL_CCFLAGS = ''
 import rtconfig
 if rtconfig.CROSS_TOOL == 'keil':
     LOCAL_CCFLAGS += ' --gnu'
+elif rtconfig.CROSS_TOOL == 'gcc':
+    LOCAL_CCFLAGS += ' -std=c11'
 
 CPPDEFINES = ['JERRY_JS_PARSER', 'JERRY_ENABLE_EXTERNAL_CONTEXT']
 

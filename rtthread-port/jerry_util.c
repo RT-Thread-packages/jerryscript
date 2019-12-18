@@ -7,7 +7,8 @@
 #include "jerry_util.h"
 #include <jerry_event.h>
 #include <jerry_message.h>
-#include <rtgui/gb2312.h>
+
+// #include <rtgui/gb2312.h>
 
 extern int js_console_init(void);
 extern int js_module_init(void);

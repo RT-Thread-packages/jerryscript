@@ -95,8 +95,8 @@ static DECL_FUNC_ARGS(jerry_buffer_read_bytes, int bytes, bool big_endian, bool 
     if (!big_endian)
         offset += bytes - 1;  // start on the big end
 
-    uint32_t value = 0;
-    for (int i = 0; i < bytes; i++)
+    uint32_t value = 0, i;
+    for (i = 0; i < bytes; i++)
     {
         value <<= 8;
         value |= buf->buffer[offset];
@@ -160,7 +160,8 @@ static DECL_FUNC_ARGS(jerry_buffer_write_bytes, int bytes, bool big_endian)
     if (big_endian)
         offset += bytes - 1;  // start on the little end
 
-    for (int i = 0; i < bytes; i++)
+	int i;
+    for (i = 0; i < bytes; i++)
     {
         buf->buffer[offset] = value & 0xff;
         value >>= 8;
@@ -360,9 +361,10 @@ DECLARE_HANDLER(toString)
             char *hexbuf = malloc(size * 2 + 1);
             if (hexbuf)
             {
+				int i;
                 jerry_value_t ret;
 
-                for (int i = 0; i < size; i++)
+                for (i = 0; i < size; i++)
                 {
                     int high = (0xf0 & buf->buffer[i + start]) >> 4;
                     int low = 0xf & buf->buffer[i + start];
@@ -874,7 +876,8 @@ DECLARE_HANDLER(Buffer)
         jerry_value_t new_buf = jerry_buffer_create(len, &buf);
         if (buf)
         {
-            for (int i = 0; i < len; i++)
+			int i;
+            for (i = 0; i < len; i++)
             {
                 jerry_value_t item = jerry_get_property_by_index(array, i);
                 if (jerry_value_is_number(item))

@@ -488,6 +488,7 @@ void net_socket_readData(jerry_value_t js_socket)
 
 void net_socket_sendData(net_writeInfo_t *write_info, jerry_value_t js_socket)
 {
+	int bytes;
     unsigned char buffer[BUFFER_SIZE];
     memset(&buffer, 0, BUFFER_SIZE);
     /*send the data*/
@@ -500,7 +501,8 @@ void net_socket_sendData(net_writeInfo_t *write_info, jerry_value_t js_socket)
 
     if (js_buffer)
     {
-        for (int i = 0, bytes = js_buffer->bufsize; bytes > 0; i++, bytes -= BUFFER_SIZE)
+		int i;
+        for (i = 0, bytes = js_buffer->bufsize; bytes > 0; i++, bytes -= BUFFER_SIZE)
         {
             memset(&buffer, 0, BUFFER_SIZE);
 
@@ -518,8 +520,9 @@ void net_socket_sendData(net_writeInfo_t *write_info, jerry_value_t js_socket)
     }
     else if (jerry_value_is_string(write_info->js_data))
     {
+		int i;
         char *js_str = js_value_to_string(write_info->js_data);
-        for (int i = 0, bytes = strlen(js_str); bytes > 0; i++, bytes -= BUFFER_SIZE)
+        for (i = 0, bytes = strlen(js_str); bytes > 0; i++, bytes -= BUFFER_SIZE)
         {
             memset(&buffer, 0, BUFFER_SIZE);
 
