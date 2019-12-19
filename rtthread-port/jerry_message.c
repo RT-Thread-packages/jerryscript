@@ -46,7 +46,7 @@ rt_bool_t js_message_send(const char *name, rt_uint8_t *data, rt_uint32_t size)
     return ret;
 }
 
-static void js_callback_message(const void *args, rt_uint32_t size)
+static void js_callback_message(const void *args, uint32_t size)
 {
     struct js_message *msg = (struct js_message *)args;
     if (msg)
