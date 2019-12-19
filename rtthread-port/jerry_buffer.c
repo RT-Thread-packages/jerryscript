@@ -13,6 +13,7 @@
 #include <jerry_util.h>
 
 #include "jerry_buffer.h"
+#include "jerry_utf8.h"
 
 #define strequal(a, b) !strcmp(a, b)
 
@@ -321,7 +322,7 @@ DECLARE_HANDLER(toString)
 
         str += start;
         rt_free(enc);
-        if (is_utf8_string(str, end - start))
+        if (jerry_str_is_utf8(str, end - start))
             return jerry_create_string_sz_from_utf8(str, end - start);
         else
             return jerry_create_undefined();
@@ -345,7 +346,7 @@ DECLARE_HANDLER(toString)
         }
 
         jerry_value_t jstr;
-        if (is_utf8_string(str, index - start))
+        if (jerry_str_is_utf8(str, index - start))
             jstr = jerry_create_string_sz_from_utf8((jerry_char_t *)str, index - start);
         else
             jstr = jerry_create_undefined();
